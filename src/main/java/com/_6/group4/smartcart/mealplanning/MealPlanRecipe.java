@@ -18,15 +18,17 @@ public class MealPlanRecipe {
     @JoinColumn(name = "recipe_id", nullable = false)
     private Recipe recipe;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "day_of_week", nullable = false, length = 10)
-    private String dayOfWeek;
+    private DayOfWeek dayOfWeek;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "meal_type", nullable = false, length = 10)
-    private String mealType;
+    private MealType mealType;
 
     protected MealPlanRecipe() {}
 
-    public MealPlanRecipe(MealPlan mealPlan, Recipe recipe, String dayOfWeek, String mealType) {
+    public MealPlanRecipe(MealPlan mealPlan, Recipe recipe, DayOfWeek dayOfWeek, MealType mealType) {
         this.mealPlan = mealPlan;
         this.recipe = recipe;
         this.dayOfWeek = dayOfWeek;
@@ -38,8 +40,8 @@ public class MealPlanRecipe {
     public void setMealPlan(MealPlan mealPlan) { this.mealPlan = mealPlan; }
     public Recipe getRecipe() { return recipe; }
     public void setRecipe(Recipe recipe) { this.recipe = recipe; }
-    public String getDayOfWeek() { return dayOfWeek; }
-    public void setDayOfWeek(String dayOfWeek) { this.dayOfWeek = dayOfWeek; }
-    public String getMealType() { return mealType; }
-    public void setMealType(String mealType) { this.mealType = mealType; }
+    public DayOfWeek getDayOfWeek() { return dayOfWeek; }
+    public void setDayOfWeek(DayOfWeek dayOfWeek) { this.dayOfWeek = dayOfWeek; }
+    public MealType getMealType() { return mealType; }
+    public void setMealType(MealType mealType) { this.mealType = mealType; }
 }
