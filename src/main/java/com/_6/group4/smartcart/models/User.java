@@ -24,11 +24,14 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true, length = 320)
+    @Column(nullable = false, unique = true, length = 255)
     private String email;
 
-    @Column(name = "password_hash", nullable = false, length = 100)
+    @Column(name = "password", nullable = false, length = 255)
     private String passwordHash;
+
+    @Column(nullable = false, length = 255)
+    private String name;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -37,12 +40,12 @@ public class User {
     private LocalDateTime updatedAt;
 
     protected User() {
- 
     }
 
-    public User(String email, String passwordHash) {
+    public User(String email, String passwordHash, String name) {
         this.email = email;
         this.passwordHash = passwordHash;
+        this.name = name;
     }
 
     @PrePersist
@@ -75,6 +78,14 @@ public class User {
 
     public void setPasswordHash(String passwordHash) {
         this.passwordHash = passwordHash;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 
     public LocalDateTime getCreatedAt() {

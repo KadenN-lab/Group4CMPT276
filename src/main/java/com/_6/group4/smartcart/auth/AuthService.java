@@ -17,9 +17,13 @@ public class AuthService {
         this.passwordHasher = passwordHasher;
     }
 
-    public User register(String email, String password, String confirmPassword) {
+    public User register(String email, String password, String confirmPassword, String name) {
         if (!StringUtils.hasText(email) || !StringUtils.hasText(password) || !StringUtils.hasText(confirmPassword)) {
             throw new IllegalArgumentException("All fields are required.");
+        }
+
+        if (!StringUtils.hasText(name)) {
+            throw new IllegalArgumentException("Name is required.");
         }
 
         if (!password.equals(confirmPassword)) {
@@ -37,7 +41,7 @@ public class AuthService {
 
         String normalizedEmail = email.trim().toLowerCase();
         String passwordHash = passwordHasher.hash(password);
-        User user = new User(normalizedEmail, passwordHash);
+        User user = new User(normalizedEmail, passwordHash, name.trim());
         return userRepository.save(user);
     }
 

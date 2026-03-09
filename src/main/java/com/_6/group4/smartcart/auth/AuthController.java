@@ -21,13 +21,6 @@ public class AuthController {
         this.authService = authService;
     }
 
-    @GetMapping("/")
-    public String home(HttpSession session, Model model) {
-        Object email = session.getAttribute(SESSION_USER_EMAIL);
-        model.addAttribute("userEmail", email);
-        return "design";
-    }
-
     @GetMapping("/dashboard")
     public String dashboard(HttpSession session, Model model) {
         Object userId = session.getAttribute(SESSION_USER_ID);
@@ -46,16 +39,18 @@ public class AuthController {
     @PostMapping("/register")
     public String handleRegister(
             @RequestParam String email,
+            @RequestParam String name,
             @RequestParam String password,
             @RequestParam String confirmPassword,
             Model model
     ) {
         try {
-            authService.register(email, password, confirmPassword);
+            authService.register(email, password, confirmPassword, name);
             return "redirect:/login?registered";
         } catch (IllegalArgumentException ex) {
             model.addAttribute("error", ex.getMessage());
             model.addAttribute("email", email);
+            model.addAttribute("name", name);
             return "register";
         }
     }
