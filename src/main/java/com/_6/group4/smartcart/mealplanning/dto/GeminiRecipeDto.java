@@ -7,7 +7,7 @@ public record GeminiRecipeDto(
     String cuisine,
     Integer cookTimeMinutes,
     Integer servings,
-    Object instructions,
+    String instructions,
     List<IngredientDto> ingredients
 ) {
     public record IngredientDto(String name, Double quantity, String unit) {}

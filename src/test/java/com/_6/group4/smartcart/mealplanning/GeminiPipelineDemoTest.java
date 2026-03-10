@@ -201,27 +201,7 @@ class GeminiPipelineDemoTest {
     /** Same logic as MealPlanController.persistRecipe */
     private Recipe persistRecipe(GeminiRecipeDto dto) {
         Recipe recipe = new Recipe(dto.title() != null ? dto.title() : "Untitled Recipe");
-      Object rawInstructions = dto.instructions();
-      if (rawInstructions instanceof java.util.List<?> steps) {
-        StringBuilder sb = new StringBuilder();
-        int i = 1;
-        for (Object step : steps) {
-          if (step == null) {
-            continue;
-          }
-          String text = String.valueOf(step).trim();
-          if (text.isEmpty()) {
-            continue;
-          }
-          if (sb.length() > 0) {
-            sb.append("\n");
-          }
-          sb.append(i++).append(". ").append(text);
-        }
-        recipe.setInstructions(sb.toString());
-      } else {
-        recipe.setInstructions(rawInstructions != null ? String.valueOf(rawInstructions) : "");
-      }
+        recipe.setInstructions(dto.instructions());
         recipe.setCookTimeMinutes(dto.cookTimeMinutes());
         recipe.setServings(dto.servings());
         recipe.setCuisine(dto.cuisine());

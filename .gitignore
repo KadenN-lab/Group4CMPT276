@@ -32,6 +32,9 @@ build/
 ### VS Code ###
 .vscode/
 
+### macOS ###
+.DS_Store
+
 ### Environment ###
 .env
 .env.local
@@ -44,3 +47,8 @@ build/
 
 ### Screenshots (Playwright testing) ###
 *.png
+
+### Local docs ###
+docs/iteration1-report.md
+docs/ui-mockups.md
+docs/mockups/

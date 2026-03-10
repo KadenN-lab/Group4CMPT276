@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Admin Dashboard</title>
+</head>
+<body>
+
+<h1>Admin Dashboard</h1>
+
+<table border="1" id="userTable">
+<thead>
+<tr>
+<th>ID</th>
+<th>Name</th>
+<th>Email</th>
+<th>Admin</th>
+<th>Created</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+
+<script>
+
+async function loadUsers(){
+    const res = await fetch("/api/admin/users");
+
+    if(!res.ok){
+        alert("Unauthorized");
+        return;
+    }
+
+    const users = await res.json();
+    const table = document.querySelector("#userTable tbody");
+
+    table.innerHTML = "";
+
+    users.forEach(u => {
+        const row = document.createElement("tr");
+
+        row.innerHTML = `
+        <td>${u.id}</td>
+        <td>${u.name}</td>
+        <td>${u.email}</td>
+        <td>${u.admin}</td>
+        <td>${u.createdAt}</td>
+        <td><button onclick="deleteUser(${u.id})">Delete</button></td>
+        `;
+
+        table.appendChild(row);
+    });
+}
+
+async function deleteUser(id){
+    await fetch("/api/admin/users/" + id, { method: "DELETE" });
+    loadUsers();
+}
+
+loadUsers();
+
+</script>
+
+</body>
+</html>
