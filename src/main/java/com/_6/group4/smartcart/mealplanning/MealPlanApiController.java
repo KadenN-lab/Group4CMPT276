@@ -281,9 +281,37 @@ public class MealPlanApiController {
 
     // ---- Helpers ----------------------------------------------------------
 
+    private String normalizeInstructions(Object instructions) {
+        if (instructions == null) {
+            return "";
+        }
+        if (instructions instanceof String text) {
+            return text;
+        }
+        if (instructions instanceof List<?> steps) {
+            StringBuilder sb = new StringBuilder();
+            int i = 1;
+            for (Object step : steps) {
+                if (step == null) {
+                    continue;
+                }
+                String s = String.valueOf(step).trim();
+                if (s.isEmpty()) {
+                    continue;
+                }
+                if (sb.length() > 0) {
+                    sb.append("\n");
+                }
+                sb.append(i++).append(". ").append(s);
+            }
+            return sb.toString();
+        }
+        return String.valueOf(instructions);
+    }
+
     private Recipe persistRecipe(GeminiRecipeDto dto) {
         Recipe recipe = new Recipe(dto.title() != null ? dto.title() : "Untitled Recipe");
-        recipe.setInstructions(dto.instructions());
+        recipe.setInstructions(normalizeInstructions(dto.instructions()));
         recipe.setCookTimeMinutes(dto.cookTimeMinutes());
         recipe.setServings(dto.servings());
         recipe.setCuisine(dto.cuisine());
