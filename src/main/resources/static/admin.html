@@ -1,65 +1,220 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<title>Admin Dashboard</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Dashboard – SmartCart</title>
+  <link rel="icon" href="/favicon.ico" />
+  <link rel="stylesheet" href="/css/styles.css" />
+  <style>
+    .admin-page { min-height: 100vh; display: flex; flex-direction: column; }
+
+    .admin-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.75rem 1.5rem; border-bottom: 1px solid var(--border);
+      background: var(--card);
+    }
+    .admin-header-left { display: flex; align-items: center; gap: 1rem; }
+    .admin-badge {
+      display: inline-block; padding: 0.125rem 0.5rem; border-radius: 999px;
+      background: var(--celery-light); color: var(--primary);
+      font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.04em;
+    }
+    .admin-header-right { display: flex; align-items: center; gap: 1rem; font-size: 0.875rem; }
+    .admin-header-right a { font-weight: 500; }
+
+    .admin-body { flex: 1; max-width: 72rem; margin: 0 auto; width: 100%; padding: 2rem 1.5rem; }
+    .admin-title { font-size: 1.5rem; font-weight: 700; margin-bottom: 1.5rem; }
+
+    /* Stats */
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem; margin-bottom: 2rem;
+    }
+    .stat-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 1.25rem; text-align: center;
+    }
+    .stat-value { font-size: 2rem; font-weight: 700; color: var(--primary); }
+    .stat-label { font-size: 0.8125rem; color: var(--muted-foreground); margin-top: 0.25rem; }
+
+    /* Table */
+    .user-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    .user-table thead th {
+      text-align: left; padding: 0.75rem 1rem; font-weight: 600;
+      color: var(--muted-foreground); border-bottom: 2px solid var(--border);
+      font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .user-table tbody td {
+      padding: 0.75rem 1rem; border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    .user-table tbody tr:hover { background: var(--accent); }
+    .role-badge {
+      display: inline-block; padding: 0.125rem 0.5rem; border-radius: 999px;
+      font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.02em;
+    }
+    .role-admin { background: var(--celery-light); color: var(--primary); }
+    .role-user { background: var(--muted); color: var(--muted-foreground); }
+    .btn-delete {
+      padding: 0.25rem 0.625rem; border-radius: var(--radius);
+      background: var(--destructive); color: var(--destructive-foreground);
+      font-size: 0.75rem; font-weight: 600; cursor: pointer; border: none;
+    }
+    .btn-delete:hover { filter: brightness(0.9); }
+    .btn-delete:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .loading { color: var(--muted-foreground); padding: 2rem; text-align: center; }
+    .error-msg { color: var(--destructive); padding: 2rem; text-align: center; }
+
+    .admin-footer {
+      text-align: center; padding: 1.5rem; font-size: 0.8125rem;
+      color: var(--muted-foreground); border-top: 1px solid var(--border);
+    }
+  </style>
 </head>
 <body>
+  <div class="admin-page">
+    <header class="admin-header">
+      <div class="admin-header-left">
+        <a href="/" class="logo" style="text-decoration:none;">Smart<span class="logo-accent">Cart</span></a>
+        <span class="admin-badge">ADMIN</span>
+      </div>
+      <div class="admin-header-right">
+        <a href="/">Back to App</a>
+        <span id="admin-email"></span>
+        <a href="/logout">Logout</a>
+      </div>
+    </header>
 
-<h1>Admin Dashboard</h1>
+    <div class="admin-body">
+      <h1 class="admin-title">Admin Dashboard</h1>
 
-<table border="1" id="userTable">
-<thead>
-<tr>
-<th>ID</th>
-<th>Name</th>
-<th>Email</th>
-<th>Admin</th>
-<th>Created</th>
-<th>Action</th>
-</tr>
-</thead>
-<tbody></tbody>
-</table>
+      <div class="stats-grid" id="stats-grid">
+        <div class="stat-card"><div class="stat-value" id="stat-users">-</div><div class="stat-label">Total Users</div></div>
+        <div class="stat-card"><div class="stat-value" id="stat-plans">-</div><div class="stat-label">Meal Plans</div></div>
+        <div class="stat-card"><div class="stat-value" id="stat-recipes">-</div><div class="stat-label">Recipes</div></div>
+      </div>
 
-<script>
+      <div id="user-section">
+        <div class="loading">Loading users&hellip;</div>
+      </div>
+    </div>
 
-async function loadUsers(){
-    const res = await fetch("/api/admin/users");
+    <footer class="admin-footer">
+      &copy; 2026 SmartCart Admin &middot; CMPT 276 Group 4
+    </footer>
+  </div>
 
-    if(!res.ok){
-        alert("Unauthorized");
-        return;
-    }
+  <script>
+    (function () {
+      "use strict";
 
-    const users = await res.json();
-    const table = document.querySelector("#userTable tbody");
+      function esc(str) {
+        if (str == null) return "";
+        var d = document.createElement("div");
+        d.appendChild(document.createTextNode(String(str)));
+        return d.innerHTML;
+      }
 
-    table.innerHTML = "";
+      function checkAuth() {
+        return fetch("/api/auth/me", { credentials: "same-origin" })
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            if (!d.loggedIn || !d.isAdmin) {
+              window.location.href = "/login.html";
+              return null;
+            }
+            var emailEl = document.getElementById("admin-email");
+            if (emailEl) emailEl.textContent = d.email;
+            return d;
+          });
+      }
 
-    users.forEach(u => {
-        const row = document.createElement("tr");
+      function loadStats() {
+        fetch("/api/admin/stats", { credentials: "same-origin" })
+          .then(function (r) { return r.ok ? r.json() : {}; })
+          .then(function (s) {
+            setText("stat-users", s.totalUsers != null ? s.totalUsers : "-");
+            setText("stat-plans", s.totalMealPlans != null ? s.totalMealPlans : "-");
+            setText("stat-recipes", s.totalRecipes != null ? s.totalRecipes : "-");
+          })
+          .catch(function () {});
+      }
 
-        row.innerHTML = `
-        <td>${u.id}</td>
-        <td>${u.name}</td>
-        <td>${u.email}</td>
-        <td>${u.admin}</td>
-        <td>${u.createdAt}</td>
-        <td><button onclick="deleteUser(${u.id})">Delete</button></td>
-        `;
+      function setText(id, val) {
+        var el = document.getElementById(id);
+        if (el) el.textContent = val;
+      }
 
-        table.appendChild(row);
-    });
-}
+      function loadUsers() {
+        var section = document.getElementById("user-section");
+        section.innerHTML = '<div class="loading">Loading users&hellip;</div>';
 
-async function deleteUser(id){
-    await fetch("/api/admin/users/" + id, { method: "DELETE" });
-    loadUsers();
-}
+        fetch("/api/admin/users", { credentials: "same-origin" })
+          .then(function (r) {
+            if (r.status === 403) throw new Error("Forbidden");
+            if (!r.ok) throw new Error("Failed to load");
+            return r.json();
+          })
+          .then(function (users) { renderTable(users); })
+          .catch(function (e) {
+            section.innerHTML = '<div class="error-msg">' + esc(e.message) + '</div>';
+          });
+      }
 
-loadUsers();
+      function renderTable(users) {
+        var section = document.getElementById("user-section");
+        var html = '<table class="user-table"><thead><tr>' +
+          "<th>ID</th><th>Name</th><th>Email</th><th>Role</th><th>Joined</th><th>Action</th>" +
+          "</tr></thead><tbody>";
 
-</script>
+        users.forEach(function (u) {
+          var roleClass = u.admin ? "role-admin" : "role-user";
+          var roleText = u.admin ? "Admin" : "User";
+          var date = u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "-";
+          html += "<tr>" +
+            "<td>" + esc(u.id) + "</td>" +
+            "<td>" + esc(u.name) + "</td>" +
+            "<td>" + esc(u.email) + "</td>" +
+            '<td><span class="role-badge ' + roleClass + '">' + roleText + "</span></td>" +
+            "<td>" + esc(date) + "</td>" +
+            "<td>" + (u.admin
+              ? '<button class="btn-delete" disabled title="Cannot delete admin">Delete</button>'
+              : '<button class="btn-delete" data-id="' + u.id + '">Delete</button>') +
+            "</td></tr>";
+        });
 
+        html += "</tbody></table>";
+        section.innerHTML = html;
+
+        section.querySelectorAll(".btn-delete[data-id]").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            var id = btn.getAttribute("data-id");
+            if (!confirm("Are you sure you want to delete this user? This cannot be undone.")) return;
+            btn.disabled = true;
+            btn.textContent = "Deleting\u2026";
+            fetch("/api/admin/users/" + id, { method: "DELETE", credentials: "same-origin" })
+              .then(function (r) {
+                if (!r.ok) throw new Error("Delete failed");
+                loadUsers();
+                loadStats();
+              })
+              .catch(function () {
+                btn.disabled = false;
+                btn.textContent = "Delete";
+                alert("Failed to delete user.");
+              });
+          });
+        });
+      }
+
+      checkAuth().then(function (auth) {
+        if (!auth) return;
+        loadStats();
+        loadUsers();
+      });
+    })();
+  </script>
 </body>
 </html>

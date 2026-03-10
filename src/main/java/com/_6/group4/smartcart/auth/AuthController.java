@@ -7,7 +7,6 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import com._6.group4.smartcart.auth.User;
 
 import java.util.Map;
 
@@ -24,14 +23,23 @@ public class AuthController {
         this.authService = authService;
     }
 
-    /** Returns current session auth state for the main UI header. */
+    @GetMapping("/")
+    public String root(HttpSession session) {
+        if (session.getAttribute(SESSION_USER_ID) != null) {
+            return "redirect:/app.html";
+        }
+        return "redirect:/landing.html";
+    }
+
     @GetMapping(value = "/api/auth/me", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, Object>> authMe(HttpSession session) {
         Object userId = session.getAttribute(SESSION_USER_ID);
         Object email = session.getAttribute(SESSION_USER_EMAIL);
+        Boolean isAdmin = (Boolean) session.getAttribute(SESSION_IS_ADMIN);
         boolean loggedIn = userId != null && email != null;
         Map<String, Object> body = loggedIn
-            ? Map.of("loggedIn", true, "email", email.toString())
+            ? Map.of("loggedIn", true, "email", email.toString(),
+                      "isAdmin", Boolean.TRUE.equals(isAdmin))
             : Map.of("loggedIn", false);
         return ResponseEntity.ok(body);
     }
@@ -41,7 +49,16 @@ public class AuthController {
         if (session.getAttribute(SESSION_USER_ID) == null) {
             return "redirect:/login.html";
         }
-        return "redirect:/";
+        return "redirect:/app.html";
+    }
+
+    @GetMapping("/admin")
+    public String admin(HttpSession session) {
+        Boolean isAdmin = (Boolean) session.getAttribute(SESSION_IS_ADMIN);
+        if (session.getAttribute(SESSION_USER_ID) == null || !Boolean.TRUE.equals(isAdmin)) {
+            return "redirect:/login.html";
+        }
+        return "redirect:/admin.html";
     }
 
     @GetMapping("/register")
@@ -106,4 +123,3 @@ public class AuthController {
         return "redirect:/login.html?logout=1";
     }
 }
-

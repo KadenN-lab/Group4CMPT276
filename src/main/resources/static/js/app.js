@@ -41,20 +41,33 @@ var state = {
 /* =================================================================
    Auth header (login / logout in main UI)
    ================================================================= */
-function updateAuthHeader() {
+function updateAuthHeader(authData) {
   var el = $("#auth-header");
   if (!el) return;
+
+  function render(data) {
+    if (data.loggedIn && data.email) {
+      var html = "";
+      if (data.isAdmin) {
+        html += '<a href="/admin.html" class="auth-link" style="font-weight:600;">Admin</a> ';
+      }
+      html += '<span class="auth-email">' + esc(data.email) + "</span> " +
+        '<a href="/logout" class="auth-link">Logout</a>';
+      el.innerHTML = html;
+    } else {
+      el.innerHTML = '<a href="/login" class="auth-link">Login</a> ' +
+        '<a href="/register" class="auth-link">Register</a>';
+    }
+  }
+
+  if (authData) {
+    render(authData);
+    return;
+  }
+
   fetch("/api/auth/me", { credentials: "same-origin" })
     .then(function (res) { return res.ok ? res.json() : { loggedIn: false }; })
-    .then(function (data) {
-      if (data.loggedIn && data.email) {
-        el.innerHTML = '<span class="auth-email">' + esc(data.email) + "</span> " +
-          '<a href="/logout" class="auth-link">Logout</a>';
-      } else {
-        el.innerHTML = '<a href="/login" class="auth-link">Login</a> ' +
-          '<a href="/register" class="auth-link">Register</a>';
-      }
-    })
+    .then(render)
     .catch(function () {
       el.innerHTML = '<a href="/login" class="auth-link">Login</a> ' +
         '<a href="/register" class="auth-link">Register</a>';
@@ -538,14 +551,14 @@ document.addEventListener("DOMContentLoaded", function () {
       if (!auth.loggedIn) {
         var hasPending = sessionStorage.getItem("onboardingPayload");
         if (!hasPending) {
-          window.location.href = "/login.html";
+          window.location.href = "/";
           return;
         }
         window.location.href = "/register.html?from=onboarding";
         return;
       }
 
-      updateAuthHeader();
+      updateAuthHeader(auth);
 
       if (Onboarding.resumeIfPending()) return;
 
@@ -556,7 +569,7 @@ document.addEventListener("DOMContentLoaded", function () {
       });
     })
     .catch(function () {
-      window.location.href = "/login.html";
+      window.location.href = "/";
     });
 });
 
