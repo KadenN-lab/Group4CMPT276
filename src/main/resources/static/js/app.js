@@ -38,6 +38,29 @@ var state = {
 };
 
 /* =================================================================
+   Auth header (login / logout in main UI)
+   ================================================================= */
+function updateAuthHeader() {
+  var el = $("#auth-header");
+  if (!el) return;
+  fetch("/api/auth/me", { credentials: "same-origin" })
+    .then(function (res) { return res.ok ? res.json() : { loggedIn: false }; })
+    .then(function (data) {
+      if (data.loggedIn && data.email) {
+        el.innerHTML = '<span class="auth-email">' + esc(data.email) + "</span> " +
+          '<a href="/logout" class="auth-link">Logout</a>';
+      } else {
+        el.innerHTML = '<a href="/login" class="auth-link">Login</a> ' +
+          '<a href="/register" class="auth-link">Register</a>';
+      }
+    })
+    .catch(function () {
+      el.innerHTML = '<a href="/login" class="auth-link">Login</a> ' +
+        '<a href="/register" class="auth-link">Register</a>';
+    });
+}
+
+/* =================================================================
    Helpers
    ================================================================= */
 function esc(str) {
@@ -479,6 +502,8 @@ function updatePlanSubtitle() {
    Initialization
    ================================================================= */
 document.addEventListener("DOMContentLoaded", function () {
+  updateAuthHeader();
+
   $$("#main-nav .nav-btn").forEach(function (btn) {
     btn.addEventListener("click", function () {
       switchView(btn.getAttribute("data-view"));

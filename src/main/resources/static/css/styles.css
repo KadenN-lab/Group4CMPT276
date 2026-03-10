@@ -190,6 +190,35 @@ ul, ol { list-style: none; }
   color: var(--secondary-foreground);
 }
 
+.auth-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.875rem;
+}
+
+.auth-loading {
+  color: var(--muted-foreground);
+}
+
+.auth-email {
+  color: var(--muted-foreground);
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.auth-link {
+  color: var(--primary);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.auth-link:hover {
+  text-decoration: underline;
+}
+
 /* ================================================================
    Section Labels
    ================================================================ */

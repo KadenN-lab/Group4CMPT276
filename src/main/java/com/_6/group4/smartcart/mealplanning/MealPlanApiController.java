@@ -8,6 +8,7 @@ import com._6.group4.smartcart.grocery.PantryItem;
 import com._6.group4.smartcart.grocery.PantryItemRepository;
 import com._6.group4.smartcart.mealplanning.dto.GeminiMealPlanDto;
 import com._6.group4.smartcart.mealplanning.dto.GeminiRecipeDto;
+import jakarta.servlet.http.HttpSession;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
@@ -21,6 +22,7 @@ import java.util.*;
 public class MealPlanApiController {
 
     private static final Long GUEST_USER_ID = 1L;
+    private static final String SESSION_USER_ID = "USER_ID";
 
     private final GeminiService geminiService;
     private final RecipeRepository recipeRepository;
@@ -43,25 +45,35 @@ public class MealPlanApiController {
         this.pantryItemRepository = pantryItemRepository;
     }
 
+    /** Resolves the current user ID from session, or guest (1) if not logged in. */
+    private Long getCurrentUserId(HttpSession session) {
+        Object id = session != null ? session.getAttribute(SESSION_USER_ID) : null;
+        if (id instanceof Long) return (Long) id;
+        if (id instanceof Number) return ((Number) id).longValue();
+        return GUEST_USER_ID;
+    }
+
     // ---- Meal Plan --------------------------------------------------------
 
     @GetMapping("/meal-plan")
     @Transactional(readOnly = true)
-    public ResponseEntity<?> getMealPlan() {
-        return mealPlanRepository.findTopByUserIdOrderByCreatedAtDesc(GUEST_USER_ID)
+    public ResponseEntity<?> getMealPlan(HttpSession session) {
+        Long userId = getCurrentUserId(session);
+        return mealPlanRepository.findTopByUserIdOrderByCreatedAtDesc(userId)
                 .map(plan -> ResponseEntity.ok(toMealPlanResponse(plan)))
                 .orElse(ResponseEntity.ok(Map.of("meals", List.of())));
     }
 
     @PostMapping("/meal-plan/generate")
     @Transactional
-    public ResponseEntity<?> generateMealPlan(@RequestBody(required = false) Map<String, String> body) {
+    public ResponseEntity<?> generateMealPlan(@RequestBody(required = false) Map<String, String> body, HttpSession session) {
+        Long userId = getCurrentUserId(session);
         String pantryIngredients = body != null ? body.getOrDefault("pantryIngredients", "") : "";
 
-        UserPreferences prefs = preferencesRepository.findByUserId(GUEST_USER_ID).orElse(null);
+        UserPreferences prefs = preferencesRepository.findByUserId(userId).orElse(null);
 
         if (pantryIngredients.isBlank()) {
-            List<PantryItem> pantryItems = pantryItemRepository.findAllByUserIdOrderByIngredientName(GUEST_USER_ID);
+            List<PantryItem> pantryItems = pantryItemRepository.findAllByUserIdOrderByIngredientName(userId);
             if (!pantryItems.isEmpty()) {
                 StringBuilder sb = new StringBuilder();
                 for (PantryItem pi : pantryItems) {
@@ -86,9 +98,9 @@ public class MealPlanApiController {
                     .body(Map.of("error", "Could not generate a meal plan. Check your GEMINI_API_KEY."));
         }
 
-        User guest = userRepository.findById(GUEST_USER_ID).orElseThrow();
+        User user = userRepository.findById(userId).orElseThrow();
         LocalDate monday = LocalDate.now().with(TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY));
-        MealPlan plan = new MealPlan(guest, monday);
+        MealPlan plan = new MealPlan(user, monday);
 
         for (GeminiMealPlanDto.MealEntry entry : dto.meals()) {
             if (entry.recipe() == null) continue;
@@ -121,8 +133,9 @@ public class MealPlanApiController {
 
     @GetMapping("/grocery-list")
     @Transactional(readOnly = true)
-    public ResponseEntity<?> getGroceryList() {
-        Optional<MealPlan> planOpt = mealPlanRepository.findTopByUserIdOrderByCreatedAtDesc(GUEST_USER_ID);
+    public ResponseEntity<?> getGroceryList(HttpSession session) {
+        Long userId = getCurrentUserId(session);
+        Optional<MealPlan> planOpt = mealPlanRepository.findTopByUserIdOrderByCreatedAtDesc(userId);
         if (planOpt.isEmpty()) {
             return ResponseEntity.ok(Map.of("items", List.of()));
         }
@@ -148,8 +161,9 @@ public class MealPlanApiController {
 
     @GetMapping("/preferences")
     @Transactional(readOnly = true)
-    public ResponseEntity<?> getPreferences() {
-        return preferencesRepository.findByUserId(GUEST_USER_ID)
+    public ResponseEntity<?> getPreferences(HttpSession session) {
+        Long userId = getCurrentUserId(session);
+        return preferencesRepository.findByUserId(userId)
                 .map(p -> {
                     Map<String, Object> resp = new LinkedHashMap<>();
                     resp.put("servingSize", p.getServingSize());
@@ -167,8 +181,13 @@ public class MealPlanApiController {
 
     @PutMapping("/preferences")
     @Transactional
-    public ResponseEntity<?> updatePreferences(@RequestBody Map<String, Object> body) {
-        UserPreferences prefs = preferencesRepository.findByUserId(GUEST_USER_ID).orElseThrow();
+    public ResponseEntity<?> updatePreferences(@RequestBody Map<String, Object> body, HttpSession session) {
+        Long userId = getCurrentUserId(session);
+        UserPreferences prefs = preferencesRepository.findByUserId(userId)
+                .orElseGet(() -> {
+                    User user = userRepository.findById(userId).orElseThrow();
+                    return preferencesRepository.save(new UserPreferences(user));
+                });
         if (body.containsKey("servingSize")) {
             prefs.setServingSize(((Number) body.get("servingSize")).intValue());
         }
@@ -201,8 +220,9 @@ public class MealPlanApiController {
 
     @GetMapping("/pantry")
     @Transactional(readOnly = true)
-    public ResponseEntity<?> getPantry() {
-        List<PantryItem> items = pantryItemRepository.findAllByUserIdOrderByIngredientName(GUEST_USER_ID);
+    public ResponseEntity<?> getPantry(HttpSession session) {
+        Long userId = getCurrentUserId(session);
+        List<PantryItem> items = pantryItemRepository.findAllByUserIdOrderByIngredientName(userId);
         List<Map<String, Object>> result = new ArrayList<>();
         for (PantryItem pi : items) {
             Map<String, Object> m = new LinkedHashMap<>();
@@ -218,11 +238,12 @@ public class MealPlanApiController {
     @PostMapping("/pantry")
     @Transactional
     @SuppressWarnings("unchecked")
-    public ResponseEntity<?> savePantry(@RequestBody Map<String, Object> body) {
-        User user = userRepository.findById(GUEST_USER_ID).orElseThrow();
+    public ResponseEntity<?> savePantry(@RequestBody Map<String, Object> body, HttpSession session) {
+        Long userId = getCurrentUserId(session);
+        User user = userRepository.findById(userId).orElseThrow();
         List<String> itemNames = (List<String>) body.getOrDefault("items", List.of());
 
-        pantryItemRepository.deleteAllByUserId(GUEST_USER_ID);
+        pantryItemRepository.deleteAllByUserId(userId);
 
         List<PantryItem> saved = new ArrayList<>();
         for (String name : itemNames) {
@@ -235,9 +256,15 @@ public class MealPlanApiController {
 
     @DeleteMapping("/pantry/{id}")
     @Transactional
-    public ResponseEntity<?> deletePantryItem(@PathVariable Long id) {
-        pantryItemRepository.deleteById(id);
-        return ResponseEntity.ok(Map.of("status", "deleted"));
+    public ResponseEntity<?> deletePantryItem(@PathVariable Long id, HttpSession session) {
+        Long userId = getCurrentUserId(session);
+        return pantryItemRepository.findById(id)
+                .filter(item -> item.getUser().getId().equals(userId))
+                .map(item -> {
+                    pantryItemRepository.delete(item);
+                    return ResponseEntity.ok(Map.of("status", "deleted"));
+                })
+                .orElse(ResponseEntity.notFound().build());
     }
 
     // ---- Helpers ----------------------------------------------------------
