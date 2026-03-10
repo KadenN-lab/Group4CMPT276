@@ -560,10 +560,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
       updateAuthHeader(auth);
 
-      if (Onboarding.resumeIfPending()) return;
+      if (Onboarding.resumeIfPending()) { revealApp(); return; }
 
       Onboarding.check().then(function (shown) {
-        if (!shown) initApp();
+        if (shown) { revealApp(); } else { initApp(); }
       }).catch(function () {
         initApp();
       });
@@ -573,7 +573,15 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 });
 
+function revealApp() {
+  var ls = document.getElementById("loading-screen");
+  if (ls) ls.style.display = "none";
+  var app = document.querySelector(".app");
+  if (app) app.style.display = "";
+}
+
 function initApp() {
+  revealApp();
   Api.fetchMealPlan().then(function (plan) {
     state.mealPlan = plan;
     updatePlanSubtitle();

@@ -109,6 +109,9 @@ public class AuthController {
             session.setAttribute(SESSION_USER_ID, user.getId());
             session.setAttribute(SESSION_USER_EMAIL, user.getEmail());
             session.setAttribute(SESSION_IS_ADMIN, user.isAdmin());
+            if (user.isAdmin()) {
+                return "redirect:/admin.html";
+            }
             return "redirect:/dashboard";
         } catch (IllegalArgumentException ex) {
             String params = "?error=" + java.net.URLEncoder.encode(ex.getMessage(), java.nio.charset.StandardCharsets.UTF_8)
