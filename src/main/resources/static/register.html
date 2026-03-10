@@ -25,11 +25,12 @@
   <div class="auth-page">
     <div class="auth-box">
       <a href="/" class="auth-back">← Back to SmartCart</a>
-      <h1>Create an account</h1>
+      <h1 id="reg-title">Create an account</h1>
+      <p id="reg-subtitle" class="text-sm" style="color:var(--muted-foreground);margin:-1rem 0 1.5rem;" hidden></p>
 
       <div id="auth-msg" class="auth-msg" hidden></div>
 
-      <form method="post" action="/register">
+      <form method="post" action="/register" id="reg-form">
         <label for="name">Name</label>
         <input id="name" name="name" type="text" required placeholder="Your display name" autocomplete="name" />
 
@@ -54,6 +55,12 @@
     (function () {
       var params = new URLSearchParams(window.location.search);
       var msgEl = document.getElementById("auth-msg");
+
+      if (params.get("from") === "onboarding") {
+        document.getElementById("reg-subtitle").textContent =
+          "Create an account to save your preferences and meal plan.";
+        document.getElementById("reg-subtitle").hidden = false;
+      }
 
       if (params.get("error")) {
         msgEl.textContent = params.get("error");

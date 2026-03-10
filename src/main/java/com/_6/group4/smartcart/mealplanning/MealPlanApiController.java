@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import org.springframework.http.HttpStatus;
 import java.time.LocalDate;
 import java.time.temporal.TemporalAdjusters;
 import java.util.*;
@@ -21,7 +22,6 @@ import java.util.*;
 @RequestMapping("/api")
 public class MealPlanApiController {
 
-    private static final Long GUEST_USER_ID = 1L;
     private static final String SESSION_USER_ID = "USER_ID";
 
     private final GeminiService geminiService;
@@ -45,13 +45,17 @@ public class MealPlanApiController {
         this.pantryItemRepository = pantryItemRepository;
     }
 
-    /** Resolves the current user ID from session, or guest (1) if not logged in. */
+    /** Resolves the current user ID from session. Returns null if not authenticated. */
     private Long getCurrentUserId(HttpSession session) {
         Object id = session != null ? session.getAttribute(SESSION_USER_ID) : null;
         if (id instanceof Long) return (Long) id;
         if (id instanceof Number) return ((Number) id).longValue();
-        return GUEST_USER_ID;
+        return null;
     }
+
+    private static final ResponseEntity<?> UNAUTHORIZED =
+            ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Not authenticated"));
 
     // ---- Meal Plan --------------------------------------------------------
 
@@ -59,6 +63,7 @@ public class MealPlanApiController {
     @Transactional(readOnly = true)
     public ResponseEntity<?> getMealPlan(HttpSession session) {
         Long userId = getCurrentUserId(session);
+        if (userId == null) return UNAUTHORIZED;
         return mealPlanRepository.findTopByUserIdOrderByCreatedAtDesc(userId)
                 .map(plan -> ResponseEntity.ok(toMealPlanResponse(plan)))
                 .orElse(ResponseEntity.ok(Map.of("meals", List.of())));
@@ -68,6 +73,7 @@ public class MealPlanApiController {
     @Transactional
     public ResponseEntity<?> generateMealPlan(@RequestBody(required = false) Map<String, String> body, HttpSession session) {
         Long userId = getCurrentUserId(session);
+        if (userId == null) return UNAUTHORIZED;
         String pantryIngredients = body != null ? body.getOrDefault("pantryIngredients", "") : "";
 
         UserPreferences prefs = preferencesRepository.findByUserId(userId).orElse(null);
@@ -135,6 +141,7 @@ public class MealPlanApiController {
     @Transactional(readOnly = true)
     public ResponseEntity<?> getGroceryList(HttpSession session) {
         Long userId = getCurrentUserId(session);
+        if (userId == null) return UNAUTHORIZED;
         Optional<MealPlan> planOpt = mealPlanRepository.findTopByUserIdOrderByCreatedAtDesc(userId);
         if (planOpt.isEmpty()) {
             return ResponseEntity.ok(Map.of("items", List.of()));
@@ -163,6 +170,7 @@ public class MealPlanApiController {
     @Transactional(readOnly = true)
     public ResponseEntity<?> getPreferences(HttpSession session) {
         Long userId = getCurrentUserId(session);
+        if (userId == null) return UNAUTHORIZED;
         return preferencesRepository.findByUserId(userId)
                 .map(p -> {
                     Map<String, Object> resp = new LinkedHashMap<>();
@@ -183,6 +191,7 @@ public class MealPlanApiController {
     @Transactional
     public ResponseEntity<?> updatePreferences(@RequestBody Map<String, Object> body, HttpSession session) {
         Long userId = getCurrentUserId(session);
+        if (userId == null) return UNAUTHORIZED;
         UserPreferences prefs = preferencesRepository.findByUserId(userId)
                 .orElseGet(() -> {
                     User user = userRepository.findById(userId).orElseThrow();
@@ -222,6 +231,7 @@ public class MealPlanApiController {
     @Transactional(readOnly = true)
     public ResponseEntity<?> getPantry(HttpSession session) {
         Long userId = getCurrentUserId(session);
+        if (userId == null) return UNAUTHORIZED;
         List<PantryItem> items = pantryItemRepository.findAllByUserIdOrderByIngredientName(userId);
         List<Map<String, Object>> result = new ArrayList<>();
         for (PantryItem pi : items) {
@@ -240,6 +250,7 @@ public class MealPlanApiController {
     @SuppressWarnings("unchecked")
     public ResponseEntity<?> savePantry(@RequestBody Map<String, Object> body, HttpSession session) {
         Long userId = getCurrentUserId(session);
+        if (userId == null) return UNAUTHORIZED;
         User user = userRepository.findById(userId).orElseThrow();
         List<String> itemNames = (List<String>) body.getOrDefault("items", List.of());
 
@@ -258,6 +269,7 @@ public class MealPlanApiController {
     @Transactional
     public ResponseEntity<?> deletePantryItem(@PathVariable Long id, HttpSession session) {
         Long userId = getCurrentUserId(session);
+        if (userId == null) return UNAUTHORIZED;
         return pantryItemRepository.findById(id)
                 .filter(item -> item.getUser().getId().equals(userId))
                 .map(item -> {

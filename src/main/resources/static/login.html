@@ -57,7 +57,11 @@
         msgEl.hidden = false;
       }
       if (params.get("registered") || params.get("message")) {
-        msgEl.textContent = params.get("message") || "Registration successful. Please log in.";
+        var msg = params.get("message") || "Registration successful. Please log in.";
+        if (sessionStorage.getItem("onboardingPayload")) {
+          msg += " Your preferences will be saved after you log in.";
+        }
+        msgEl.textContent = msg;
         msgEl.classList.add("success");
         msgEl.hidden = false;
       }

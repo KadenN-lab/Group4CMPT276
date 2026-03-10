@@ -19,8 +19,9 @@ var DIET_OPTIONS = [
 ];
 
 var CUISINE_OPTIONS = [
-  "Mediterranean", "Asian", "Mexican", "Indian",
-  "Italian", "American", "Middle Eastern"
+  "Italian", "Mexican", "Chinese", "Japanese", "Korean",
+  "Thai", "Vietnamese", "Indian", "Mediterranean", "French",
+  "American", "Middle Eastern", "Greek", "Caribbean", "Spanish"
 ];
 
 /* =================================================================
@@ -427,7 +428,11 @@ function renderDietChips() {
 function renderCuisineChips() {
   var container = $("#cuisine-chips");
   var html = "";
-  CUISINE_OPTIONS.forEach(function (cuisine) {
+  var allCuisines = CUISINE_OPTIONS.slice();
+  Object.keys(state.selectedCuisines).forEach(function (c) {
+    if (allCuisines.indexOf(c) === -1) allCuisines.push(c);
+  });
+  allCuisines.forEach(function (cuisine) {
     var active = !!state.selectedCuisines[cuisine];
     html += '<button class="chip' + (active ? " active" : "") +
       '" data-cuisine="' + esc(cuisine) + '">' + esc(cuisine) + "</button>";
@@ -443,6 +448,23 @@ function renderCuisineChips() {
       Api.updatePreferences({ preferredCuisines: cuisineStr });
     });
   });
+
+  var input = document.getElementById("custom-cuisine-input");
+  if (input && !input._bound) {
+    input._bound = true;
+    input.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && input.value.trim()) {
+        input.value.split(",").forEach(function (part) {
+          var v = part.trim();
+          if (v) state.selectedCuisines[v] = true;
+        });
+        input.value = "";
+        renderCuisineChips();
+        var cuisineStr = Object.keys(state.selectedCuisines).join(", ") || null;
+        Api.updatePreferences({ preferredCuisines: cuisineStr });
+      }
+    });
+  }
 }
 
 /* =================================================================
@@ -502,8 +524,6 @@ function updatePlanSubtitle() {
    Initialization
    ================================================================= */
 document.addEventListener("DOMContentLoaded", function () {
-  updateAuthHeader();
-
   $$("#main-nav .nav-btn").forEach(function (btn) {
     btn.addEventListener("click", function () {
       switchView(btn.getAttribute("data-view"));
@@ -512,13 +532,32 @@ document.addEventListener("DOMContentLoaded", function () {
 
   $("#generate-btn").addEventListener("click", handleGenerate);
 
-  Onboarding.check().then(function (shown) {
-    if (!shown) {
-      initApp();
-    }
-  }).catch(function () {
-    initApp();
-  });
+  fetch("/api/auth/me", { credentials: "same-origin" })
+    .then(function (res) { return res.ok ? res.json() : { loggedIn: false }; })
+    .then(function (auth) {
+      if (!auth.loggedIn) {
+        var hasPending = sessionStorage.getItem("onboardingPayload");
+        if (!hasPending) {
+          window.location.href = "/login.html";
+          return;
+        }
+        window.location.href = "/register.html?from=onboarding";
+        return;
+      }
+
+      updateAuthHeader();
+
+      if (Onboarding.resumeIfPending()) return;
+
+      Onboarding.check().then(function (shown) {
+        if (!shown) initApp();
+      }).catch(function () {
+        initApp();
+      });
+    })
+    .catch(function () {
+      window.location.href = "/login.html";
+    });
 });
 
 function initApp() {

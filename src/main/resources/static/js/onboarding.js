@@ -15,9 +15,9 @@ var Onboarding = (function () {
   ];
 
   var CUISINE_OPTIONS = [
-    "Mediterranean", "Asian", "Mexican", "Indian", "Italian",
-    "American", "Middle Eastern", "Japanese", "Korean",
-    "Thai", "French", "Ethiopian", "Caribbean"
+    "Italian", "Mexican", "Chinese", "Japanese", "Korean",
+    "Thai", "Vietnamese", "Indian", "Mediterranean", "French",
+    "American", "Middle Eastern", "Greek", "Caribbean", "Spanish"
   ];
 
   var DAYS = ["MONDAY","TUESDAY","WEDNESDAY","THURSDAY","FRIDAY","SATURDAY","SUNDAY"];
@@ -162,6 +162,8 @@ var Onboarding = (function () {
     var html = '<h1 class="onboarding-title">Do you follow any of these diets?</h1>';
     html += '<p class="onboarding-subtitle">Select all that apply, or skip if none.</p>';
     html += '<div class="chip-group" style="justify-content:center;" id="ob-diets">';
+    var hasAnyDiet = Object.keys(data.diets).some(function (k) { return data.diets[k]; });
+    html += '<button class="chip' + (!hasAnyDiet ? " active" : "") + '" data-val="__none__">None</button>';
     DIET_OPTIONS.forEach(function (d) {
       html += '<button class="chip' + (data.diets[d] ? " active" : "") + '" data-val="' + esc(d) + '">' + esc(d) + '</button>';
     });
@@ -175,12 +177,14 @@ var Onboarding = (function () {
     var html = '<h1 class="onboarding-title">Any food allergies?</h1>';
     html += '<p class="onboarding-subtitle">We\'ll make sure these never appear in your recipes.</p>';
     html += '<div class="chip-group" style="justify-content:center;" id="ob-allergies">';
+    var hasAnyAllergy = Object.keys(data.allergies).some(function (k) { return data.allergies[k]; });
+    html += '<button class="chip' + (!hasAnyAllergy && !data.allergyOther ? " active" : "") + '" data-val="__none__">None</button>';
     ALLERGY_OPTIONS.forEach(function (a) {
       html += '<button class="chip' + (data.allergies[a] ? " active" : "") + '" data-val="' + esc(a) + '">' + esc(a) + '</button>';
     });
     html += '</div>';
     html += '<div style="margin-top:1rem;">';
-    html += '<input class="text-input" id="ob-allergy-other" placeholder="Other allergies..." value="' + esc(data.allergyOther) + '" />';
+    html += '<input class="text-input" id="ob-allergy-other" placeholder="e.g. mustard, celery, lupin..." value="' + esc(data.allergyOther) + '" />';
     html += '</div>';
     html += nav("Back", "Next");
     return html;
@@ -189,11 +193,20 @@ var Onboarding = (function () {
   /* Step 5: Cuisines */
   function stepCuisines() {
     var html = '<h1 class="onboarding-title">What cuisines do you enjoy?</h1>';
-    html += '<p class="onboarding-subtitle">Select a few and we\'ll work them into your weekly plan.</p>';
+    html += '<p class="onboarding-subtitle">Select a few or type your own below. Press Enter to add.</p>';
     html += '<div class="chip-group" style="justify-content:center;" id="ob-cuisines">';
     CUISINE_OPTIONS.forEach(function (c) {
       html += '<button class="chip' + (data.cuisines[c] ? " active" : "") + '" data-val="' + esc(c) + '">' + esc(c) + '</button>';
     });
+    var customCuisines = Object.keys(data.cuisines).filter(function (c) {
+      return data.cuisines[c] && CUISINE_OPTIONS.indexOf(c) === -1;
+    });
+    customCuisines.forEach(function (c) {
+      html += '<button class="chip active" data-val="' + esc(c) + '">' + esc(c) + '</button>';
+    });
+    html += '</div>';
+    html += '<div style="margin-top:0.75rem;">';
+    html += '<input class="text-input" id="ob-cuisine-input" placeholder="e.g. Brazilian, Peruvian, Filipino, BBQ..." />';
     html += '</div>';
     html += '<div class="toggle-row" style="justify-content:center;" id="ob-rotate">';
     html += '<button class="toggle-track' + (data.rotateCuisines ? " on" : "") + '" id="ob-rotate-btn"><span class="toggle-thumb"></span></button>';
@@ -206,7 +219,7 @@ var Onboarding = (function () {
   /* Step 6: Dislikes */
   function stepDislikes() {
     var html = '<h1 class="onboarding-title">Any foods you\'d rather avoid?</h1>';
-    html += '<p class="onboarding-subtitle">Type a food and press Enter to add it. We\'ll keep these out of your recipes.</p>';
+    html += '<p class="onboarding-subtitle">Type foods separated by commas and press Enter. We\'ll keep these out of your recipes.</p>';
 
     html += '<input class="text-input" id="ob-dislike-input" placeholder="e.g. cilantro, liver, mushrooms, olives..." />';
     html += '<div class="tag-group" id="ob-dislike-tags">';
@@ -271,7 +284,7 @@ var Onboarding = (function () {
     });
 
     html += '<div style="margin-top:0.75rem;">';
-    html += '<input class="text-input" id="ob-pantry-other" placeholder="Add other items you always have..." />';
+    html += '<input class="text-input" id="ob-pantry-other" placeholder="e.g. soy sauce, flour, sriracha, rice vinegar..." />';
     html += '</div>';
     html += nav("Back", "Next");
     return html;
@@ -344,7 +357,7 @@ var Onboarding = (function () {
       case 2: bindServings(); break;
       case 3: bindChipGroup("ob-diets", data.diets); break;
       case 4: bindChipGroup("ob-allergies", data.allergies); break;
-      case 5: bindChipGroup("ob-cuisines", data.cuisines); bindRotate(); break;
+      case 5: bindChipGroup("ob-cuisines", data.cuisines); bindCuisineInput(); bindRotate(); break;
       case 6: bindDislikes(); break;
       case 7: bindSchedule(); break;
       case 8: bindPantry(); break;
@@ -371,14 +384,44 @@ var Onboarding = (function () {
   }
 
   function bindChipGroup(containerId, store) {
-    document.querySelectorAll("#" + containerId + " .chip").forEach(function (btn) {
+    var container = document.getElementById(containerId);
+    if (!container) return;
+    container.querySelectorAll(".chip").forEach(function (btn) {
       btn.addEventListener("click", function () {
         var val = btn.getAttribute("data-val");
-        store[val] = !store[val];
-        if (!store[val]) delete store[val];
-        btn.classList.toggle("active", !!store[val]);
+        if (val === "__none__") {
+          Object.keys(store).forEach(function (k) { delete store[k]; });
+          container.querySelectorAll(".chip").forEach(function (b) {
+            b.classList.toggle("active", b.getAttribute("data-val") === "__none__");
+          });
+        } else {
+          store[val] = !store[val];
+          if (!store[val]) delete store[val];
+          btn.classList.toggle("active", !!store[val]);
+          var noneBtn = container.querySelector('.chip[data-val="__none__"]');
+          if (noneBtn) {
+            var hasAny = Object.keys(store).some(function (k) { return store[k]; });
+            noneBtn.classList.toggle("active", !hasAny);
+          }
+        }
       });
     });
+  }
+
+  function bindCuisineInput() {
+    var input = document.getElementById("ob-cuisine-input");
+    if (input) {
+      input.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" && input.value.trim()) {
+          input.value.split(",").forEach(function (part) {
+            var v = part.trim();
+            if (v) data.cuisines[v] = true;
+          });
+          input.value = "";
+          render();
+        }
+      });
+    }
   }
 
   function bindRotate() {
@@ -394,10 +437,12 @@ var Onboarding = (function () {
     if (input) {
       input.addEventListener("keydown", function (e) {
         if (e.key === "Enter" && input.value.trim()) {
-          var val = input.value.trim();
-          if (data.dislikedFoods.indexOf(val) === -1) {
-            data.dislikedFoods.push(val);
-          }
+          input.value.split(",").forEach(function (part) {
+            var v = part.trim();
+            if (v && data.dislikedFoods.indexOf(v) === -1) {
+              data.dislikedFoods.push(v);
+            }
+          });
           input.value = "";
           render();
         }
@@ -468,7 +513,10 @@ var Onboarding = (function () {
     if (otherInput) {
       otherInput.addEventListener("keydown", function (e) {
         if (e.key === "Enter" && otherInput.value.trim()) {
-          data.pantry[otherInput.value.trim()] = true;
+          otherInput.value.split(",").forEach(function (part) {
+            var v = part.trim();
+            if (v) data.pantry[v] = true;
+          });
           otherInput.value = "";
           render();
         }
@@ -485,17 +533,8 @@ var Onboarding = (function () {
     });
   }
 
-  /* ---- submit ---- */
-  function submitOnboarding() {
-    var overlay = document.getElementById("onboarding-overlay");
-    var card = overlay.querySelector(".onboarding-card");
-    card.innerHTML =
-      '<div style="text-align:center;padding:3rem 0;">' +
-      '<div class="logo" style="font-size:1.5rem;margin-bottom:1rem;">Smart<span class="logo-accent">Cart</span></div>' +
-      '<p class="onboarding-subtitle">Creating your personalized meal plan...</p>' +
-      '<p class="text-muted text-sm">This may take a minute</p>' +
-      '</div>';
-
+  /* ---- build payload from in-memory data ---- */
+  function buildPayload() {
     var dietList = Object.keys(data.diets).filter(function (k) { return data.diets[k]; });
     var allergyList = Object.keys(data.allergies).filter(function (k) { return data.allergies[k]; });
     if (data.allergyOther) allergyList.push(data.allergyOther);
@@ -508,30 +547,44 @@ var Onboarding = (function () {
       if (meals.length) scheduleObj[d] = meals;
     });
 
-    var prefsPayload = {
-      servingSize: data.servingSize,
-      dietaryRestrictions: dietList.join(", ") || null,
-      allergies: allergyList.join(", ") || null,
-      preferredCuisines: cuisineList.join(", ") || null,
-      rotateCuisines: data.rotateCuisines,
-      dislikedFoods: data.dislikedFoods.join(", ") || null,
-      mealSchedule: JSON.stringify(scheduleObj),
-      onboardingCompleted: true
+    return {
+      prefs: {
+        servingSize: data.servingSize,
+        dietaryRestrictions: dietList.join(", ") || null,
+        allergies: allergyList.join(", ") || null,
+        preferredCuisines: cuisineList.join(", ") || null,
+        rotateCuisines: data.rotateCuisines,
+        dislikedFoods: data.dislikedFoods.join(", ") || null,
+        mealSchedule: JSON.stringify(scheduleObj),
+        onboardingCompleted: true
+      },
+      pantryItems: pantryItems
     };
+  }
 
-    Api.updatePreferences(prefsPayload)
-      .then(function () { return Api.savePantry(pantryItems); })
-      .then(function () { return Api.generateMealPlan(pantryItems.join(", ")); })
+  /* ---- persist onboarding to server (user must be authenticated) ---- */
+  function persistOnboarding(payload) {
+    var overlay = document.getElementById("onboarding-overlay");
+    var card = overlay.querySelector(".onboarding-card");
+    card.innerHTML =
+      '<div style="text-align:center;padding:3rem 0;">' +
+      '<div class="logo" style="font-size:1.5rem;margin-bottom:1rem;">Smart<span class="logo-accent">Cart</span></div>' +
+      '<p class="onboarding-subtitle">Creating your personalized meal plan...</p>' +
+      '<p class="text-muted text-sm">This may take a minute</p>' +
+      '</div>';
+
+    Api.updatePreferences(payload.prefs)
+      .then(function () { return Api.savePantry(payload.pantryItems); })
+      .then(function () { return Api.generateMealPlan(payload.pantryItems.join(", ")); })
       .then(function (plan) {
+        sessionStorage.removeItem("onboardingPayload");
         overlay.setAttribute("hidden", "");
         document.querySelector(".app").style.display = "";
         if (typeof state !== "undefined") {
           state.mealPlan = plan;
           state.selectedMeal = null;
           state.checkedItems = {};
-          state.servingSize = data.servingSize;
-          state.selectedDiets = Object.assign({}, data.diets);
-          state.selectedCuisines = Object.assign({}, data.cuisines);
+          state.servingSize = payload.prefs.servingSize;
           updatePlanSubtitle();
           renderMealGrid(plan.meals || []);
           renderPreferences();
@@ -546,11 +599,32 @@ var Onboarding = (function () {
           '<button class="btn-next" id="ob-dismiss">Go to App</button>' +
           '</div>';
         document.getElementById("ob-dismiss").addEventListener("click", function () {
+          sessionStorage.removeItem("onboardingPayload");
           overlay.setAttribute("hidden", "");
           document.querySelector(".app").style.display = "";
           if (typeof loadPreferences === "function") loadPreferences();
           if (typeof renderMealGrid === "function") renderMealGrid([]);
         });
+      });
+  }
+
+  /* ---- submit: stash data then require signup ---- */
+  function submitOnboarding() {
+    var payload = buildPayload();
+
+    fetch("/api/auth/me", { credentials: "same-origin" })
+      .then(function (res) { return res.ok ? res.json() : { loggedIn: false }; })
+      .then(function (auth) {
+        if (auth.loggedIn) {
+          persistOnboarding(payload);
+        } else {
+          sessionStorage.setItem("onboardingPayload", JSON.stringify(payload));
+          window.location.href = "/register.html?from=onboarding";
+        }
+      })
+      .catch(function () {
+        sessionStorage.setItem("onboardingPayload", JSON.stringify(payload));
+        window.location.href = "/register.html?from=onboarding";
       });
   }
 
@@ -564,6 +638,22 @@ var Onboarding = (function () {
         document.querySelector(".app").style.display = "none";
         return true;
       }).catch(function () { return false; });
+    },
+    resumeIfPending: function () {
+      var raw = sessionStorage.getItem("onboardingPayload");
+      if (!raw) return false;
+      try {
+        var payload = JSON.parse(raw);
+        var overlay = document.getElementById("onboarding-overlay");
+        overlay.removeAttribute("hidden");
+        document.querySelector(".app").style.display = "none";
+        overlay.innerHTML = '<div class="onboarding-card"></div>';
+        persistOnboarding(payload);
+        return true;
+      } catch (e) {
+        sessionStorage.removeItem("onboardingPayload");
+        return false;
+      }
     }
   };
 })();
