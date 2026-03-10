@@ -15,7 +15,7 @@ public class AdminController {
         Boolean isAdmin = (Boolean) session.getAttribute(SESSION_IS_ADMIN);
 
         if (isAdmin == null || !isAdmin) {
-            return "redirect:/";
+            return "redirect:/login.html";
         }
 
         return "admin.html";

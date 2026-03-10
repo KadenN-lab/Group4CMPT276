@@ -20,7 +20,7 @@ public class User {
     @Column(nullable = false)
     private String name;
 
-    @Column(nullable = false)    
+    @Column(name = "is_admin", nullable = false)    
     private boolean isAdmin = false;
 
     @Column(name = "created_at", nullable = false, updatable = false)
