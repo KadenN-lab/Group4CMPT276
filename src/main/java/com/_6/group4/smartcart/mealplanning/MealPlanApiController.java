@@ -308,7 +308,6 @@ public class MealPlanApiController {
         for (String name : itemNames) {
             if (name != null && !name.isBlank()) {
                 PantryItem pantryItem = new PantryItem(user, name.trim());
-                pantryItem.setCanonicalName(IngredientNormalizer.canonicalizeName(name));
                 saved.add(pantryItemRepository.save(pantryItem));
             }
         }
@@ -335,17 +334,17 @@ public class MealPlanApiController {
         String normalizedUnit = GroceryAggregationService.normalizeStoredUnit(body.unit());
         Double requestedQuantity = body.quantity();
         boolean numericRequest = requestedQuantity != null || normalizedUnit != null;
+        List<PantryItem> existingItems = pantryItemRepository.findAllByUserIdOrderByIngredientName(userId);
 
         if (!covered) {
-            removePantryEntry(userId, canonicalName, normalizedUnit, numericRequest);
+            removePantryEntry(existingItems, canonicalName, normalizedUnit, numericRequest);
             return ResponseEntity.ok(Map.of("status", "removed"));
         }
 
         User user = userRepository.findById(userId).orElseThrow();
         if (!numericRequest) {
-            pantryItemRepository.deleteAllByUserIdAndCanonicalName(userId, canonicalName);
+            removeAllPantryEntries(existingItems, canonicalName);
             PantryItem pantryItem = new PantryItem(user, displayName != null ? displayName : canonicalName);
-            pantryItem.setCanonicalName(canonicalName);
             pantryItem.setQuantity(null);
             pantryItem.setUnit(null);
             pantryItemRepository.save(pantryItem);
@@ -353,17 +352,21 @@ public class MealPlanApiController {
         }
 
         if (requestedQuantity == null || requestedQuantity <= 0d) {
-            removePantryEntry(userId, canonicalName, normalizedUnit, true);
+            removePantryEntry(existingItems, canonicalName, normalizedUnit, true);
             return ResponseEntity.ok(Map.of("status", "removed"));
         }
 
-        pantryItemRepository.deleteAllByUserIdAndCanonicalNameAndQuantityIsNull(userId, canonicalName);
+        removeBooleanPantryEntries(existingItems, canonicalName);
 
-        PantryItem pantryItem = findNumericPantryItem(userId, canonicalName, normalizedUnit)
-                .orElseGet(() -> new PantryItem(user, displayName != null ? displayName : canonicalName));
+        List<PantryItem> numericMatches = findNumericPantryItems(existingItems, canonicalName, normalizedUnit);
+        PantryItem pantryItem = numericMatches.isEmpty()
+                ? new PantryItem(user, displayName != null ? displayName : canonicalName)
+                : numericMatches.get(0);
+        if (numericMatches.size() > 1) {
+            pantryItemRepository.deleteAll(numericMatches.subList(1, numericMatches.size()));
+        }
         pantryItem.setUser(user);
         pantryItem.setIngredientName(displayName != null ? displayName : canonicalName);
-        pantryItem.setCanonicalName(canonicalName);
         pantryItem.setQuantity(requestedQuantity);
         pantryItem.setUnit(normalizedUnit);
         pantryItemRepository.save(pantryItem);
@@ -429,23 +432,61 @@ public class MealPlanApiController {
         return trimmed.isBlank() ? null : trimmed;
     }
 
-    private Optional<PantryItem> findNumericPantryItem(Long userId, String canonicalName, String unit) {
-        if (unit == null) {
-            return pantryItemRepository.findFirstByUserIdAndCanonicalNameAndUnitIsNullAndQuantityIsNotNull(userId, canonicalName);
+    private List<PantryItem> findNumericPantryItems(Collection<PantryItem> pantryItems, String canonicalName, String unit) {
+        List<PantryItem> matches = new ArrayList<>();
+        for (PantryItem pantryItem : pantryItems) {
+            if (pantryItem.getQuantity() == null) {
+                continue;
+            }
+            if (!Objects.equals(canonicalName, pantryItem.getCanonicalName())) {
+                continue;
+            }
+            if (sameNormalizedUnit(pantryItem.getUnit(), unit)) {
+                matches.add(pantryItem);
+            }
         }
-        return pantryItemRepository.findFirstByUserIdAndCanonicalNameAndUnitAndQuantityIsNotNull(userId, canonicalName, unit);
+        return matches;
     }
 
-    private void removePantryEntry(Long userId, String canonicalName, String unit, boolean numericRequest) {
-        if (numericRequest) {
-            if (unit == null) {
-                pantryItemRepository.deleteAllByUserIdAndCanonicalNameAndUnitIsNullAndQuantityIsNotNull(userId, canonicalName);
-            } else {
-                pantryItemRepository.deleteAllByUserIdAndCanonicalNameAndUnitAndQuantityIsNotNull(userId, canonicalName, unit);
+    private void removePantryEntry(Collection<PantryItem> pantryItems, String canonicalName, String unit, boolean numericRequest) {
+        List<PantryItem> matches = new ArrayList<>();
+        for (PantryItem pantryItem : pantryItems) {
+            if (!Objects.equals(canonicalName, pantryItem.getCanonicalName())) {
+                continue;
             }
-            return;
+            if (!numericRequest && pantryItem.getQuantity() == null) {
+                matches.add(pantryItem);
+                continue;
+            }
+            if (numericRequest && pantryItem.getQuantity() != null && sameNormalizedUnit(pantryItem.getUnit(), unit)) {
+                matches.add(pantryItem);
+            }
         }
-        pantryItemRepository.deleteAllByUserIdAndCanonicalNameAndQuantityIsNull(userId, canonicalName);
+        if (!matches.isEmpty()) {
+            pantryItemRepository.deleteAll(matches);
+        }
+    }
+
+    private void removeBooleanPantryEntries(Collection<PantryItem> pantryItems, String canonicalName) {
+        removePantryEntry(pantryItems, canonicalName, null, false);
+    }
+
+    private void removeAllPantryEntries(Collection<PantryItem> pantryItems, String canonicalName) {
+        List<PantryItem> matches = new ArrayList<>();
+        for (PantryItem pantryItem : pantryItems) {
+            if (Objects.equals(canonicalName, pantryItem.getCanonicalName())) {
+                matches.add(pantryItem);
+            }
+        }
+        if (!matches.isEmpty()) {
+            pantryItemRepository.deleteAll(matches);
+        }
+    }
+
+    private boolean sameNormalizedUnit(String left, String right) {
+        String normalizedLeft = GroceryAggregationService.normalizeStoredUnit(left);
+        String normalizedRight = GroceryAggregationService.normalizeStoredUnit(right);
+        return Objects.equals(normalizedLeft, normalizedRight);
     }
 
     private Map<String, Object> toMealPlanResponse(MealPlan plan) {
