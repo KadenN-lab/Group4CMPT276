@@ -76,6 +76,54 @@ class GeminiServiceTest {
         assertThat(result.cuisine()).isEqualTo("Italian");
     }
 
+    // ---- sampleFromList ----
+
+    @Test
+    void sampleFromList_nullReturnsNull() {
+        assertThat(GeminiService.sampleFromList(null, 3)).isNull();
+    }
+
+    @Test
+    void sampleFromList_blankReturnsBlank() {
+        assertThat(GeminiService.sampleFromList("  ", 3)).isEqualTo("  ");
+    }
+
+    @Test
+    void sampleFromList_underMaxReturnsAll() {
+        String input = "Chicken, Beef";
+        assertThat(GeminiService.sampleFromList(input, 3)).isEqualTo(input);
+    }
+
+    @Test
+    void sampleFromList_exactMaxReturnsAll() {
+        String input = "Chicken, Beef, Salmon";
+        assertThat(GeminiService.sampleFromList(input, 3)).isEqualTo(input);
+    }
+
+    @Test
+    void sampleFromList_overMaxSamplesCorrectCount() {
+        String input = "Chicken, Beef, Salmon, Turkey, Pork, Shrimp, Tofu, Cod";
+        String result = GeminiService.sampleFromList(input, 3);
+        String[] items = result.split(",");
+        assertThat(items).hasSize(3);
+        // Each item should be from the original list
+        for (String item : items) {
+            assertThat(input).contains(item.trim());
+        }
+    }
+
+    @Test
+    void sampleFromList_overMaxProducesVariety() {
+        // Run 20 times — should not always return the same 3
+        String input = "A, B, C, D, E, F, G, H";
+        java.util.Set<String> allResults = new java.util.HashSet<>();
+        for (int i = 0; i < 20; i++) {
+            allResults.add(GeminiService.sampleFromList(input, 3));
+        }
+        // With 8 items choosing 3, we should see at least 2 different combinations
+        assertThat(allResults.size()).isGreaterThan(1);
+    }
+
     @Test
     void parseJson_stripsMarkdownFences() {
         String json = """

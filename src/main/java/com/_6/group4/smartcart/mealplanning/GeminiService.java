@@ -134,11 +134,34 @@ public class GeminiService {
                 null, null, null, 2);
     }
 
+    /**
+     * Randomly samples up to {@code max} items from a comma-separated list.
+     * Used to auto-rotate proteins/vegetables/fruits each week so the user
+     * gets variety without re-selecting manually.
+     * Package-private for testing.
+     */
+    static String sampleFromList(String commaSeparated, int max) {
+        if (commaSeparated == null || commaSeparated.isBlank()) return commaSeparated;
+        List<String> items = new ArrayList<>();
+        for (String item : commaSeparated.split(",")) {
+            String trimmed = item.trim();
+            if (!trimmed.isEmpty()) items.add(trimmed);
+        }
+        if (items.size() <= max) return commaSeparated;
+        Collections.shuffle(items);
+        return String.join(", ", items.subList(0, max));
+    }
+
     public GeminiMealPlanDto generateMealPlan(String pantryIngredients, String dietaryRestrictions,
             String allergies, boolean rotateCuisines, String preferredCuisines,
             String dislikedFoods, String mealSchedule,
             String preferredProteins, String preferredVegetables, String preferredFruits,
             int servingSize) {
+
+        // Auto-rotate: if user selected more than the target count, sample a subset
+        preferredProteins = sampleFromList(preferredProteins, 3);
+        preferredVegetables = sampleFromList(preferredVegetables, 5);
+        preferredFruits = sampleFromList(preferredFruits, 3);
 
         StringBuilder prompt = new StringBuilder();
         prompt.append("Create a weekly meal plan (Monday to Sunday, 3 meals per day: BREAKFAST, LUNCH, DINNER). ");
