@@ -220,6 +220,7 @@ var Onboarding = (function () {
   function stepCuisines() {
     var html = '<h1 class="onboarding-title">What cuisines do you enjoy?</h1>';
     html += '<p class="onboarding-subtitle">Select a few or type your own below. Press Enter to add.</p>';
+    html += '<div style="text-align:center;margin-bottom:0.5rem;"><button class="staple-toggle-all" id="ob-cuisine-toggle-all">Select All</button></div>';
     html += '<div class="chip-group" style="justify-content:center;" id="ob-cuisines">';
     CUISINE_OPTIONS.forEach(function (c) {
       html += '<button class="chip' + (data.cuisines[c] ? " active" : "") + '" data-val="' + esc(c) + '">' + esc(c) + '</button>';
@@ -325,6 +326,7 @@ var Onboarding = (function () {
       html += '<div class="staple-category">';
       html += '<div class="staple-category-header">';
       html += '<span class="staple-category-title">' + esc(cat.name) + '</span>';
+      html += '<button class="staple-toggle-all" data-cat="' + esc(cat.name) + '" data-store="proteins">Toggle all</button>';
       html += '</div>';
       html += '<div class="staple-grid">';
       cat.items.forEach(function (item) {
@@ -354,6 +356,7 @@ var Onboarding = (function () {
       html += '<div class="staple-category">';
       html += '<div class="staple-category-header">';
       html += '<span class="staple-category-title">' + esc(cat.name) + '</span>';
+      html += '<button class="staple-toggle-all" data-cat="' + esc(cat.name) + '" data-store="vegetables">Toggle all</button>';
       html += '</div>';
       html += '<div class="staple-grid">';
       cat.items.forEach(function (item) {
@@ -367,7 +370,10 @@ var Onboarding = (function () {
     });
     html += '</div>';
 
-    html += '<h2 style="font-size:1rem;margin:1rem 0 0.5rem;color:var(--foreground);">Fruits</h2>';
+    html += '<div style="display:flex;align-items:center;gap:0.5rem;margin:1rem 0 0.5rem;">';
+    html += '<h2 style="font-size:1rem;color:var(--foreground);margin:0;">Fruits</h2>';
+    html += '<button class="staple-toggle-all" id="ob-fruit-toggle-all">Toggle all</button>';
+    html += '</div>';
     html += '<div class="staple-grid" id="ob-fruits">';
     FRUIT_OPTIONS.forEach(function (item) {
       var on = data.fruits[item];
@@ -463,12 +469,12 @@ var Onboarding = (function () {
       case 2: bindServings(); break;
       case 3: bindChipGroup("ob-diets", data.diets); break;
       case 4: bindChipGroup("ob-allergies", data.allergies); break;
-      case 5: bindChipGroup("ob-cuisines", data.cuisines); bindCuisineInput(); bindRotate(); break;
+      case 5: bindChipGroup("ob-cuisines", data.cuisines); bindCuisineInput(); bindRotate(); bindToggleAllCuisines(); break;
       case 6: bindDislikes(); break;
       case 7: bindSchedule(); break;
       case 8: bindPantry(); break;
-      case 9: bindItemPickerAll(data.proteins); break;
-      case 10: bindItemPickerIn("ob-veggies", data.vegetables); bindItemPickerIn("ob-fruits", data.fruits); break;
+      case 9: bindItemPickerAll(data.proteins); bindCategoryToggles(PROTEIN_OPTIONS, data.proteins); break;
+      case 10: bindItemPickerIn("ob-veggies", data.vegetables); bindItemPickerIn("ob-fruits", data.fruits); bindCategoryToggles(VEGETABLE_OPTIONS, data.vegetables); bindFruitToggle(); break;
       case 11: bindReviewEdits(); break;
     }
   }
@@ -653,6 +659,45 @@ var Onboarding = (function () {
         if (!store[item]) delete store[item];
         btn.classList.toggle("on", !!store[item]);
       });
+    });
+  }
+
+  function bindCategoryToggles(categories, store) {
+    document.querySelectorAll(".staple-toggle-all[data-cat]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var catName = btn.getAttribute("data-cat");
+        var cat = categories.find(function (c) { return c.name === catName; });
+        if (!cat) return;
+        var allOn = cat.items.every(function (i) { return store[i]; });
+        cat.items.forEach(function (i) {
+          if (allOn) { delete store[i]; } else { store[i] = true; }
+        });
+        render();
+      });
+    });
+  }
+
+  function bindToggleAllCuisines() {
+    var btn = document.getElementById("ob-cuisine-toggle-all");
+    if (!btn) return;
+    btn.addEventListener("click", function () {
+      var allOn = CUISINE_OPTIONS.every(function (c) { return data.cuisines[c]; });
+      CUISINE_OPTIONS.forEach(function (c) {
+        if (allOn) { delete data.cuisines[c]; } else { data.cuisines[c] = true; }
+      });
+      render();
+    });
+  }
+
+  function bindFruitToggle() {
+    var btn = document.getElementById("ob-fruit-toggle-all");
+    if (!btn) return;
+    btn.addEventListener("click", function () {
+      var allOn = FRUIT_OPTIONS.every(function (f) { return data.fruits[f]; });
+      FRUIT_OPTIONS.forEach(function (f) {
+        if (allOn) { delete data.fruits[f]; } else { data.fruits[f] = true; }
+      });
+      render();
     });
   }
 
