@@ -35,13 +35,13 @@ public class UserPreferences {
     @Column(name = "meal_schedule", length = 2000)
     private String mealSchedule;
 
-    @Column(name = "preferred_proteins")
+    @Column(name = "preferred_proteins", length = 1000)
     private String preferredProteins;
 
-    @Column(name = "preferred_vegetables")
+    @Column(name = "preferred_vegetables", length = 1000)
     private String preferredVegetables;
 
-    @Column(name = "preferred_fruits")
+    @Column(name = "preferred_fruits", length = 1000)
     private String preferredFruits;
 
     @Column(name = "onboarding_completed", nullable = false)
