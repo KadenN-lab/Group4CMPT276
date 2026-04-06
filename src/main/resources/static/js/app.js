@@ -153,7 +153,6 @@ var state = {
   selectedVegetables: {},
   selectedFruits: {},
   pantrySaving: {},
-  instacartLaunching: false,
   generating: false,
 };
 
@@ -1158,45 +1157,10 @@ function bindGroceryControls(container) {
   }
 }
 
-function handleInstacartCheckout() {
-  if (state.instacartLaunching) return;
-
-  var button = document.getElementById("btn-instacart");
-  state.instacartLaunching = true;
-  if (button) {
-    button.disabled = true;
-    button.textContent = "Creating Instacart List...";
+function handleInstacartCheckout(event) {
+  if (event) {
+    event.preventDefault();
   }
-
-  Api.createInstacartShoppingList()
-    .then(function (data) {
-      if (!data || !data.productsLinkUrl) {
-        throw new Error("Instacart did not return a shopping list link.");
-      }
-
-      var popup = window.open(data.productsLinkUrl, "_blank", "noopener");
-      if (!popup) {
-        window.location.href = data.productsLinkUrl;
-      }
-    })
-    .catch(function (err) {
-      console.error("Instacart handoff failed:", err);
-      alert(
-        friendlyApiError(
-          err,
-          "We couldn't create your Instacart shopping list right now.",
-        ),
-      );
-    })
-    .finally(function () {
-      state.instacartLaunching = false;
-      var refreshedButton = document.getElementById("btn-instacart");
-      if (refreshedButton) {
-        refreshedButton.disabled = false;
-        refreshedButton.innerHTML =
-          "Send Remaining Items to Instacart &rarr;";
-      }
-    });
 }
 
 function renderGroceryList(data) {
@@ -1261,12 +1225,8 @@ function renderGroceryList(data) {
   if (items.length) {
     html += '<div class="grocery-footer">';
     html +=
-      '<button id="btn-instacart" class="btn-primary btn-primary-full"' +
-      (state.instacartLaunching ? " disabled" : "") +
-      ">" +
-      (state.instacartLaunching
-        ? "Creating Instacart List..."
-        : "Send Remaining Items to Instacart &rarr;") +
+      '<button type="button" id="btn-instacart" class="btn-primary btn-primary-full">' +
+      "Send Remaining Items to Instacart &rarr;" +
       "</button>";
     html +=
       '<p style="font-size:0.75rem;color:var(--muted-foreground);text-align:center;margin-top:0.5rem;">' +
