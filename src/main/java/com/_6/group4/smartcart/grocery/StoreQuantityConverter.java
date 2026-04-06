@@ -74,7 +74,7 @@ public final class StoreQuantityConverter {
         if (ingredientName == null) return fallback(quantity, unit);
 
         String name = ingredientName.toLowerCase(Locale.ROOT).trim();
-        String normalizedUnit = unit != null ? unit.toLowerCase(Locale.ROOT).trim() : "";
+        String normalizedUnit = normalizeUnit(unit);
 
         // Eggs — always dozens
         if (name.contains("egg")) {
@@ -269,6 +269,39 @@ public final class StoreQuantityConverter {
     private static boolean isCountUnit(String unit) {
         return unit.isEmpty() || unit.equals("count") || unit.equals("piece")
                 || unit.equals("pieces") || unit.equals("whole") || unit.equals("large")
-                || unit.equals("medium") || unit.equals("small");
+                || unit.equals("medium") || unit.equals("small") || unit.equals("fillet")
+                || unit.equals("fillets") || unit.equals("slice") || unit.equals("slices");
+    }
+
+    /**
+     * Normalize messy Gemini unit strings to clean units.
+     * e.g. "boneless, skinless" → "count", "cup florets" → "cup", "large" → "count"
+     */
+    private static String normalizeUnit(String unit) {
+        if (unit == null || unit.isBlank()) return "";
+        String u = unit.toLowerCase(Locale.ROOT).trim();
+
+        // Strip descriptors that aren't units
+        if (u.contains("boneless") || u.contains("skinless") || u.contains("bone-in")
+                || u.contains("skin-on") || u.contains("lean") || u.contains("thick")) {
+            return "count";
+        }
+
+        // "cup florets" → "cup", "cup chopped" → "cup"
+        if (u.startsWith("cup")) return "cup";
+        if (u.startsWith("cups")) return "cup";
+        if (u.startsWith("tbsp")) return "tbsp";
+        if (u.startsWith("tsp")) return "tsp";
+        if (u.startsWith("tablespoon")) return "tbsp";
+        if (u.startsWith("teaspoon")) return "tsp";
+
+        // "slic" → "slice", truncated units
+        if (u.startsWith("slic")) return "count";
+        if (u.startsWith("fillet")) return "count";
+
+        // Size descriptors → count
+        if (u.equals("large") || u.equals("medium") || u.equals("small")) return "count";
+
+        return u;
     }
 }

@@ -998,15 +998,16 @@ function renderGroceryRow(item, sectionType) {
   html += "</div>";
 
   if (item.inputMode === "number") {
+    var storeQty = item.storeQuantity || item.quantity || "";
     var quantityLabel =
       sectionType === "covered"
         ? item.quantityValue === 0
           ? "Need to buy: none"
-          : "Need to buy: " + esc(item.quantity || "")
-        : esc(item.quantity || "");
+          : "Need to buy: " + esc(storeQty)
+        : esc(storeQty);
     html += '<div class="grocery-qty">' + quantityLabel + "</div>";
-  } else if (item.quantity) {
-    html += '<div class="grocery-qty">' + esc(item.quantity) + "</div>";
+  } else if (item.storeQuantity || item.quantity) {
+    html += '<div class="grocery-qty">' + esc(item.storeQuantity || item.quantity) + "</div>";
   }
   html += "</div>";
 
