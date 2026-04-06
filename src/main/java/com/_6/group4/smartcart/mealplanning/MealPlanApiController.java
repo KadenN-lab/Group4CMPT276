@@ -190,6 +190,8 @@ public class MealPlanApiController {
                 MealType meal = MealType.valueOf(entry.mealType());
                 GeminiRecipeDto selectedRecipe = entry.recipe();
 
+                GeminiRecipeDto selectedRecipe = entry.recipe();
+
                 // Allergy verification: check recipe ingredients against allergen list
                 if (!allergenSet.isEmpty() && recipeContainsAllergen(selectedRecipe, allergenSet)) {
                     log.warn("Allergy detected in {} {} recipe '{}' — attempting re-generation",
@@ -230,13 +232,7 @@ public class MealPlanApiController {
         }
 
         mealPlanRepository.save(plan);
-        Map<String, Object> response = toMealPlanResponse(plan);
-        if (!removedMeals.isEmpty()) {
-            response.put("allergyWarnings", removedMeals.stream()
-                    .map(slot -> slot + " was removed because it contained an allergen")
-                    .toList());
-        }
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(toMealPlanResponse(plan));
     }
 
     // ---- Meal Swap --------------------------------------------------------
