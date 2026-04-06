@@ -51,6 +51,13 @@ SmartCart is a technically rigorous and practically valuable web application tha
 - External APIs: Google Gemini (generateContent), Instacart Developer Platform
 - Deployment: Render.com
 
+## AI Declaration
+This project uses AI tools as part of the development process:
+- **Google Gemini API** — Used as a core product feature for generating meal plans and recipes. All Gemini outputs are validated server-side for schema correctness, nutritional balance, and allergy safety before being presented to users.
+- **Copilot / Claude** — Used as a development assistant for code generation, debugging, test writing, and code review. All AI-generated code was reviewed, tested, and understood by team members before being committed / merged.
+
+All team members understand the code in the repository and can explain any part of it.
+
 ## Docs
 See `docs/` for placeholders: overview, architecture, API contract, DB, deployment, and security notes.
 
