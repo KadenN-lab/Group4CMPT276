@@ -217,6 +217,19 @@ function $$(sel) {
   return document.querySelectorAll(sel);
 }
 
+function friendlyApiError(err, fallback) {
+  var message = err && err.message ? String(err.message) : "";
+  var jsonStart = message.indexOf("{");
+  if (jsonStart >= 0) {
+    try {
+      var parsed = JSON.parse(message.slice(jsonStart));
+      if (parsed && parsed.error) return parsed.error;
+    } catch (_ignored) {}
+  }
+  if (message) return message;
+  return fallback;
+}
+
 /**
  * Parse instructions into steps. Tries numbered format first (e.g. "1. Do X. 2. Do Y."),
  * then newline-separated, then sentence-splitting as fallback.
@@ -1137,6 +1150,17 @@ function bindGroceryControls(container) {
       saveTogglePantryValue(item, !item.covered, button);
     });
   });
+
+  var instacartButton = container.querySelector("#btn-instacart");
+  if (instacartButton) {
+    instacartButton.addEventListener("click", handleInstacartCheckout);
+  }
+}
+
+function handleInstacartCheckout(event) {
+  if (event) {
+    event.preventDefault();
+  }
 }
 
 function renderGroceryList(data) {
@@ -1201,7 +1225,9 @@ function renderGroceryList(data) {
   if (items.length) {
     html += '<div class="grocery-footer">';
     html +=
-      '<button class="btn-primary btn-primary-full">Send Remaining Items to Instacart &rarr;</button>';
+      '<button type="button" id="btn-instacart" class="btn-primary btn-primary-full">' +
+      "Send Remaining Items to Instacart &rarr;" +
+      "</button>";
     html +=
       '<p style="font-size:0.75rem;color:var(--muted-foreground);text-align:center;margin-top:0.5rem;">' +
       "Uses only the ingredients and quantities you still need to buy</p>";
