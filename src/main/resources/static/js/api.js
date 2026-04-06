@@ -92,5 +92,19 @@ var Api = (function () {
         body: JSON.stringify({ slots: slots }),
       });
     },
+
+    toggleFavourite: function (recipeId) {
+      return request("/recipes/" + recipeId + "/favourite", {
+        method: "POST",
+      });
+    },
+
+    getFavourites: function () {
+      return request("/recipes/favourites");
+    },
+
+    isFavourite: function (recipeId) {
+      return request("/recipes/" + recipeId + "/favourite");
+    },
   };
 })();
