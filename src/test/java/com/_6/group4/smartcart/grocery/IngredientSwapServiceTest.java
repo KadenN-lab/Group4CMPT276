@@ -32,6 +32,25 @@ class IngredientSwapServiceTest {
         assertEquals(Category.UNKNOWN, IngredientSwapService.categorize(null));
     }
 
+    // Fuzzy match must not produce false positives from substring containment
+    @Test void categorize_unicornDoesNotMatchCorn() {
+        assertEquals(Category.UNKNOWN, IngredientSwapService.categorize("unicorn"));
+    }
+
+    @Test void categorize_popcornDoesNotMatchCorn() {
+        assertEquals(Category.UNKNOWN, IngredientSwapService.categorize("popcorn"));
+    }
+
+    @Test void categorize_fuzzyMatchRespectsWordBoundary() {
+        // "fresh corn on the cob" should match "corn" (word boundary OK)
+        assertEquals(Category.EVERYDAY_VEGGIE, IngredientSwapService.categorize("fresh corn on the cob"));
+    }
+
+    @Test void categorize_fuzzyMatchPrefersLongestMatch() {
+        // "organic brown rice" should match "brown rice" (GRAIN), not just "rice"
+        assertEquals(Category.GRAIN, IngredientSwapService.categorize("organic brown rice"));
+    }
+
     // ---- Alternatives ----
     @Test void alternatives_chickenHasOtherProteins() {
         List<SwapOption> alts = IngredientSwapService.getAlternatives("chicken thighs");

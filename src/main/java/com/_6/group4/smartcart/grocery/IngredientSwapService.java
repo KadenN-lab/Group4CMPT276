@@ -181,11 +181,36 @@ public final class IngredientSwapService {
         Category exact = INGREDIENT_CATEGORIES.get(key);
         if (exact != null) return exact;
 
-        // Fuzzy match
+        // Fuzzy match: require the known ingredient to appear as a whole word
+        // (bounded by start/end of string, space, or common separators) to avoid
+        // false positives like "unicorn" matching "corn" or "popcorn" matching "corn".
+        Category best = null;
+        int bestLen = -1;
         for (Map.Entry<String, Category> entry : INGREDIENT_CATEGORIES.entrySet()) {
-            if (key.contains(entry.getKey())) return entry.getValue();
+            String candidate = entry.getKey();
+            int idx = key.indexOf(candidate);
+            if (idx < 0) continue;
+
+            // Check word boundary before match
+            if (idx > 0) {
+                char before = key.charAt(idx - 1);
+                if (Character.isLetterOrDigit(before)) continue;
+            }
+            // Check word boundary after match
+            int endIdx = idx + candidate.length();
+            if (endIdx < key.length()) {
+                char after = key.charAt(endIdx);
+                if (Character.isLetterOrDigit(after)) continue;
+            }
+
+            // Prefer the longest matching ingredient name to avoid
+            // "brown rice" matching "rice" when "brown rice" is also a match.
+            if (candidate.length() > bestLen) {
+                bestLen = candidate.length();
+                best = entry.getValue();
+            }
         }
-        return Category.UNKNOWN;
+        return best != null ? best : Category.UNKNOWN;
     }
 
     /**

@@ -1260,7 +1260,17 @@ function bindSwapButtons(container) {
   });
 }
 
+// Track the current outside-click handler so it can be cleaned up when a new
+// dropdown opens (prevents orphaned listeners when re-clicking the same button).
+var _swapDropdownCleanup = null;
+
 function showSwapDropdown(anchorBtn, currentName, alternatives) {
+  // Clean up any previous outside-click listener before removing the old dropdown
+  if (_swapDropdownCleanup) {
+    _swapDropdownCleanup();
+    _swapDropdownCleanup = null;
+  }
+
   // Remove any existing dropdown
   var existing = document.querySelector(".swap-dropdown");
   if (existing) existing.remove();
@@ -1301,6 +1311,10 @@ function showSwapDropdown(anchorBtn, currentName, alternatives) {
 
     item.addEventListener("click", function () {
       dropdown.remove();
+      if (_swapDropdownCleanup) {
+        _swapDropdownCleanup();
+        _swapDropdownCleanup = null;
+      }
       // TODO: actually swap the ingredient in the meal plan and refresh
       // For now, show confirmation
       alert("Swapped " + currentName + " for " + alt.name + "!\nGrocery list will update on next generation.");
@@ -1315,12 +1329,17 @@ function showSwapDropdown(anchorBtn, currentName, alternatives) {
 
   // Close on click outside
   setTimeout(function () {
-    document.addEventListener("click", function closeDropdown(e) {
+    function closeDropdown(e) {
       if (!dropdown.contains(e.target) && e.target !== anchorBtn) {
         dropdown.remove();
         document.removeEventListener("click", closeDropdown);
+        _swapDropdownCleanup = null;
       }
-    });
+    }
+    document.addEventListener("click", closeDropdown);
+    _swapDropdownCleanup = function () {
+      document.removeEventListener("click", closeDropdown);
+    };
   }, 10);
 }
 
