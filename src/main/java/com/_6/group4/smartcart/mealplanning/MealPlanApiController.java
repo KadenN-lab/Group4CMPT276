@@ -41,6 +41,7 @@ public class MealPlanApiController {
     private final UserPreferencesRepository preferencesRepository;
     private final PantryItemRepository pantryItemRepository;
     private final GroceryAggregationService groceryAggregationService;
+    private final FavouriteRecipeRepository favouriteRecipeRepository;
 
     public MealPlanApiController(GeminiService geminiService,
                                  RecipeRepository recipeRepository,
@@ -48,7 +49,8 @@ public class MealPlanApiController {
                                  UserRepository userRepository,
                                  UserPreferencesRepository preferencesRepository,
                                  PantryItemRepository pantryItemRepository,
-                                 GroceryAggregationService groceryAggregationService) {
+                                 GroceryAggregationService groceryAggregationService,
+                                 FavouriteRecipeRepository favouriteRecipeRepository) {
         this.geminiService = geminiService;
         this.recipeRepository = recipeRepository;
         this.mealPlanRepository = mealPlanRepository;
@@ -56,6 +58,7 @@ public class MealPlanApiController {
         this.preferencesRepository = preferencesRepository;
         this.pantryItemRepository = pantryItemRepository;
         this.groceryAggregationService = groceryAggregationService;
+        this.favouriteRecipeRepository = favouriteRecipeRepository;
     }
 
     /** Resolves the current user ID from session. Returns null if not authenticated. */
@@ -381,6 +384,61 @@ public class MealPlanApiController {
                     return ResponseEntity.ok(response);
                 })
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    // ---- Favourites --------------------------------------------------------
+
+    @PostMapping("/recipes/{id}/favourite")
+    @Transactional
+    public ResponseEntity<?> toggleFavourite(@PathVariable Long id, HttpSession session) {
+        Long userId = getCurrentUserId(session);
+        if (userId == null) return UNAUTHORIZED;
+
+        Optional<Recipe> recipeOpt = recipeRepository.findById(id);
+        if (recipeOpt.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        boolean exists = favouriteRecipeRepository.existsByUserIdAndRecipeId(userId, id);
+        if (exists) {
+            favouriteRecipeRepository.deleteByUserIdAndRecipeId(userId, id);
+            return ResponseEntity.ok(Map.of("favourited", false));
+        } else {
+            User user = userRepository.findById(userId).orElseThrow();
+            FavouriteRecipe fav = new FavouriteRecipe(user, recipeOpt.get());
+            favouriteRecipeRepository.save(fav);
+            return ResponseEntity.ok(Map.of("favourited", true));
+        }
+    }
+
+    @GetMapping("/recipes/{id}/favourite")
+    @Transactional(readOnly = true)
+    public ResponseEntity<?> isFavourite(@PathVariable Long id, HttpSession session) {
+        Long userId = getCurrentUserId(session);
+        if (userId == null) return UNAUTHORIZED;
+        boolean favourited = favouriteRecipeRepository.existsByUserIdAndRecipeId(userId, id);
+        return ResponseEntity.ok(Map.of("favourited", favourited));
+    }
+
+    @GetMapping("/recipes/favourites")
+    @Transactional(readOnly = true)
+    public ResponseEntity<?> getFavourites(HttpSession session) {
+        Long userId = getCurrentUserId(session);
+        if (userId == null) return UNAUTHORIZED;
+
+        List<FavouriteRecipe> favourites = favouriteRecipeRepository.findByUserIdOrderByCreatedAtDesc(userId);
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (FavouriteRecipe fav : favourites) {
+            Map<String, Object> entry = new LinkedHashMap<>();
+            entry.put("id", fav.getId());
+            entry.put("recipeId", fav.getRecipe().getId());
+            entry.put("recipeTitle", fav.getRecipe().getTitle());
+            entry.put("cuisine", fav.getRecipe().getCuisine());
+            entry.put("cookTimeMinutes", fav.getRecipe().getCookTimeMinutes());
+            entry.put("createdAt", fav.getCreatedAt() != null ? fav.getCreatedAt().toString() : null);
+            result.add(entry);
+        }
+        return ResponseEntity.ok(Map.of("favourites", result));
     }
 
     // ---- Grocery List -----------------------------------------------------
