@@ -40,6 +40,7 @@
         <nav class="nav" id="main-nav">
           <button class="nav-btn active" data-view="plan">Meal Plan</button>
           <button class="nav-btn" data-view="grocery">Grocery List</button>
+          <button class="nav-btn" data-view="favourites">Favourites</button>
           <button class="nav-btn" data-view="preferences">Preferences</button>
         </nav>
 
@@ -84,6 +85,17 @@
         <div id="grocery-content">
           <h2 style="font-size:1.5rem; font-weight:600;" class="mb-2">Grocery List</h2>
           <p class="text-sm text-muted">Generate a meal plan first to see your grocery list.</p>
+        </div>
+      </section>
+
+      <!-- ---- Favourites View ---- -->
+      <section id="favourites-view" class="centered-view" hidden>
+        <div style="max-width:40rem;">
+          <div class="mb-6">
+            <h2 style="font-size:1.5rem; font-weight:600;">Favourite Recipes</h2>
+            <p class="text-sm text-muted mt-1" id="favourites-subtitle">Your saved recipes</p>
+          </div>
+          <div id="favourites-list"></div>
         </div>
       </section>
 

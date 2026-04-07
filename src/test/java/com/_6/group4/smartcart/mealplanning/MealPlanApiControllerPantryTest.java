@@ -45,6 +45,7 @@ class MealPlanApiControllerPantryTest {
         userRepository = mock(UserRepository.class);
         UserPreferencesRepository preferencesRepository = mock(UserPreferencesRepository.class);
         pantryItemRepository = mock(PantryItemRepository.class);
+        FavouriteRecipeRepository favouriteRecipeRepository = mock(FavouriteRecipeRepository.class);
 
         controller = new MealPlanApiController(
                 geminiService,
@@ -53,7 +54,8 @@ class MealPlanApiControllerPantryTest {
                 userRepository,
                 preferencesRepository,
                 pantryItemRepository,
-                new GroceryAggregationService()
+                new GroceryAggregationService(),
+                favouriteRecipeRepository
         );
     }
 

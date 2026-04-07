@@ -92,6 +92,21 @@ var Api = (function () {
         body: JSON.stringify({ slots: slots }),
       });
     },
+
+    toggleFavourite: function (recipeId) {
+      return request("/recipes/" + recipeId + "/favourite", {
+        method: "POST",
+      });
+    },
+
+    getFavourites: function () {
+      return request("/recipes/favourites");
+    },
+
+    isFavourite: function (recipeId) {
+      return request("/recipes/" + recipeId + "/favourite");
+    },
+
     getMealPlanHistory: function (page, size) {
       var p = page || 0;
       var s = size || 10;

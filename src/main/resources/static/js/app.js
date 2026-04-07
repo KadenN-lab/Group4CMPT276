@@ -147,6 +147,7 @@ var state = {
   checkedItems: {},
   groceryItemIndex: {},
   servingSize: 2,
+  adjustedServings: null, // tracks user-adjusted servings for the current recipe
   selectedDiets: {},
   selectedCuisines: {},
   selectedProteins: {},
@@ -471,6 +472,7 @@ function switchView(view) {
   var views = {
     plan: "plan-view",
     grocery: "grocery-view",
+    favourites: "favourites-view",
     preferences: "preferences-view",
   };
   Object.keys(views).forEach(function (key) {
@@ -492,6 +494,7 @@ function switchView(view) {
   });
 
   if (view === "grocery") loadGroceryList();
+  if (view === "favourites") loadFavourites();
   if (view === "preferences") loadPreferences();
 }
 
@@ -791,6 +794,7 @@ function doSwap(slots) {
 
 function selectMeal(day, type, name, recipeId) {
   state.selectedMeal = { day: day, type: type, name: name, recipeId: recipeId };
+  state.adjustedServings = null; // reset so it defaults to the recipe's base servings
 
   $$(".meal-cell").forEach(function (c) {
     if (
@@ -868,9 +872,18 @@ function renderRecipeDetail(recipe) {
     esc(meal.type) +
     "</p>";
   html +=
-    '<h2 style="font-size:1.5rem;font-weight:600;" class="mb-6">' +
+    '<div style="display:flex;align-items:center;gap:0.5rem;" class="mb-6">' +
+    '<h2 style="font-size:1.5rem;font-weight:600;">' +
     esc(recipe.title) +
-    "</h2>";
+    "</h2>" +
+    '<button class="favourite-btn" id="btn-fav-recipe" title="Save to favourites">' +
+    "\u2661" +
+    "</button>" +
+    "</div>";
+
+  var baseServings = recipe.servings || 1;
+  var currentServings = state.adjustedServings || baseServings;
+  state.adjustedServings = currentServings;
 
   var metaParts = [];
   if (recipe.servings) metaParts.push("Serves " + recipe.servings);
@@ -888,13 +901,43 @@ function renderRecipeDetail(recipe) {
       "</div>";
   }
 
+  // Serving adjuster
+  html += '<div class="serving-adjuster">';
+  html += '<span class="section-label">Serves:</span>';
+  html +=
+    '<button class="serving-btn" id="btn-serving-minus" ' +
+    (currentServings <= 1 ? "disabled" : "") +
+    ">&minus;</button>";
+  html += '<span class="serving-count" id="serving-count">' + currentServings + "</span>";
+  html +=
+    '<button class="serving-btn" id="btn-serving-plus" ' +
+    (currentServings >= 8 ? "disabled" : "") +
+    ">&plus;</button>";
+  html += '<span class="text-sm text-muted">(per serving)</span>';
+  html += "</div>";
+
+  // Nutrition bar
+  if (recipe.nutrition && recipe.nutrition.totalCalories > 0) {
+    var n = recipe.nutrition;
+    html += '<div class="nutrition-bar">';
+    html += '<div class="nutrition-item"><span class="nutrition-value">' + n.totalCalories + '</span><span class="nutrition-label">cal</span></div>';
+    html += '<div class="nutrition-item"><span class="nutrition-value">' + n.totalProteinG + 'g</span><span class="nutrition-label">protein</span></div>';
+    html += '<div class="nutrition-item"><span class="nutrition-value">' + n.totalCarbsG + 'g</span><span class="nutrition-label">carbs</span></div>';
+    html += '<div class="nutrition-item"><span class="nutrition-value">' + n.totalFatG + 'g</span><span class="nutrition-label">fat</span></div>';
+    html += '</div>';
+  }
+
   if (recipe.ingredients && recipe.ingredients.length) {
+    var ratio = currentServings / baseServings;
     html += '<div class="mb-8">';
     html += '<h3 class="section-label mb-3">Ingredients</h3>';
-    html += '<ul class="ingredient-list">';
+    html += '<ul class="ingredient-list" id="ingredient-list">';
     recipe.ingredients.forEach(function (ing) {
       var text = "";
-      if (ing.quantity != null) text += ing.quantity + " ";
+      if (ing.quantity != null) {
+        var adjusted = Math.round(ing.quantity * ratio * 10) / 10;
+        text += adjusted + " ";
+      }
       if (ing.unit != null) text += ing.unit + " ";
       text += ing.name;
       html +=
@@ -971,6 +1014,25 @@ function renderRecipeDetail(recipe) {
     });
   }
 
+  var minusBtn = document.getElementById("btn-serving-minus");
+  var plusBtn = document.getElementById("btn-serving-plus");
+  if (minusBtn) {
+    minusBtn.addEventListener("click", function () {
+      if (state.adjustedServings > 1) {
+        state.adjustedServings--;
+        renderRecipeDetail(recipe);
+      }
+    });
+  }
+  if (plusBtn) {
+    plusBtn.addEventListener("click", function () {
+      if (state.adjustedServings < 8) {
+        state.adjustedServings++;
+        renderRecipeDetail(recipe);
+      }
+    });
+  }
+
   var swapBtn = document.getElementById("btn-swap-this");
   if (swapBtn && meal) {
     swapBtn.addEventListener("click", function () {
@@ -996,6 +1058,123 @@ function renderRecipeDetail(recipe) {
       });
     });
   }
+
+  // Favourite button
+  var favBtn = document.getElementById("btn-fav-recipe");
+  if (favBtn && recipe.id) {
+    Api.isFavourite(recipe.id).then(function (data) {
+      if (data.favourited) {
+        favBtn.textContent = "\u2665";
+        favBtn.classList.add("active");
+      } else {
+        favBtn.textContent = "\u2661";
+        favBtn.classList.remove("active");
+      }
+    }).catch(function () {});
+
+    favBtn.addEventListener("click", function () {
+      favBtn.disabled = true;
+      Api.toggleFavourite(recipe.id).then(function (data) {
+        favBtn.disabled = false;
+        if (data.favourited) {
+          favBtn.textContent = "\u2665";
+          favBtn.classList.add("active");
+        } else {
+          favBtn.textContent = "\u2661";
+          favBtn.classList.remove("active");
+        }
+      }).catch(function () {
+        favBtn.disabled = false;
+      });
+    });
+  }
+}
+
+/* =================================================================
+   Favourites
+   ================================================================= */
+function loadFavourites() {
+  var container = document.getElementById("favourites-list");
+  if (!container) return;
+  container.innerHTML = '<p class="text-sm text-muted">Loading favourites&hellip;</p>';
+
+  Api.getFavourites()
+    .then(function (data) {
+      renderFavourites(data.favourites || []);
+    })
+    .catch(function () {
+      container.innerHTML = '<p class="text-sm text-muted">Failed to load favourites.</p>';
+    });
+}
+
+function renderFavourites(favourites) {
+  var container = document.getElementById("favourites-list");
+  var subtitle = document.getElementById("favourites-subtitle");
+
+  if (!favourites.length) {
+    container.innerHTML =
+      '<div class="empty-state" style="padding:2rem 0;">' +
+      "<p>No favourite recipes yet</p>" +
+      "<p>Click the heart icon on any recipe to save it here</p>" +
+      "</div>";
+    if (subtitle) subtitle.textContent = "Your saved recipes";
+    return;
+  }
+
+  if (subtitle) {
+    subtitle.textContent = favourites.length + (favourites.length === 1 ? " recipe saved" : " recipes saved");
+  }
+
+  var html = '<div class="favourites-grid">';
+  favourites.forEach(function (fav) {
+    html += '<div class="favourite-card" data-recipe-id="' + fav.recipeId + '">';
+    html += '<div class="favourite-card-header">';
+    html += '<span class="favourite-card-title">' + esc(fav.recipeTitle) + "</span>";
+    html += '<button class="favourite-btn active favourite-remove" data-recipe-id="' + fav.recipeId + '" title="Remove from favourites">\u2665</button>';
+    html += "</div>";
+    var meta = [];
+    if (fav.cuisine) meta.push(esc(fav.cuisine));
+    if (fav.cookTimeMinutes) meta.push(fav.cookTimeMinutes + " min");
+    if (meta.length) {
+      html += '<p class="text-sm text-muted">' + meta.join(" &middot; ") + "</p>";
+    }
+    html += "</div>";
+  });
+  html += "</div>";
+
+  container.innerHTML = html;
+
+  container.querySelectorAll(".favourite-card").forEach(function (card) {
+    card.addEventListener("click", function (e) {
+      if (e.target.closest(".favourite-remove")) return;
+      var recipeId = Number(card.getAttribute("data-recipe-id"));
+      Api.fetchRecipe(recipeId).then(function (recipe) {
+        state.selectedMeal = {
+          day: "",
+          type: "Favourite",
+          name: recipe.title,
+          recipeId: recipe.id,
+        };
+        switchView("plan");
+        renderRecipeDetail(recipe);
+      }).catch(function () {
+        alert("Failed to load recipe.");
+      });
+    });
+  });
+
+  container.querySelectorAll(".favourite-remove").forEach(function (btn) {
+    btn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      var recipeId = Number(btn.getAttribute("data-recipe-id"));
+      btn.disabled = true;
+      Api.toggleFavourite(recipeId).then(function () {
+        loadFavourites();
+      }).catch(function () {
+        btn.disabled = false;
+      });
+    });
+  });
 }
 
 /* =================================================================
