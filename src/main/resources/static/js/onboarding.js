@@ -760,7 +760,7 @@ var Onboarding = (function () {
     { text: "Politely rejecting 'bread with bread' as a recipe...", emoji: "🥖" },
     { text: "Cross-referencing your pantry with good taste...", emoji: "👨‍🍳" },
     { text: "Whispering sweet nothings to the Gemini API...", emoji: "🤖" },
-    { text: "Assembling 21 meals that won't disappoint your stomach...", emoji: "🫃" },
+    { text: null, emoji: "🫃" }, // dynamic — replaced with actual meal count
     { text: "Double-checking that we didn't plan leftovers for Monday...", emoji: "📅" },
     { text: "Vetoing the AI's suggestion of 'deconstructed water'...", emoji: "💧" },
     { text: "Organizing your grocery list so you don't wander every aisle...", emoji: "🧾" },
@@ -775,6 +775,16 @@ var Onboarding = (function () {
     var msgEl = card.querySelector("#loading-message");
     var emojiEl = card.querySelector("#loading-emoji");
     if (!msgEl) return;
+
+    // Calculate actual meal count from schedule
+    var mealCount = 0;
+    DAYS.forEach(function (d) { MEALS.forEach(function (m) { if (data.schedule[d][m]) mealCount++; }); });
+    // Replace the null placeholder with dynamic text
+    LOADING_MESSAGES.forEach(function (msg) {
+      if (msg.text === null) {
+        msg.text = "Assembling " + mealCount + " meals that won't disappoint your stomach...";
+      }
+    });
 
     var index = 0;
     function next() {
