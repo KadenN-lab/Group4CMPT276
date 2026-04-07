@@ -927,6 +927,10 @@ function renderRecipeDetail(recipe) {
     html += '</div>';
   }
 
+  if (recipe.estimatedCost > 0) {
+    html += '<div class="recipe-cost">Est. cost: $' + recipe.estimatedCost.toFixed(2) + '</div>';
+  }
+
   if (recipe.ingredients && recipe.ingredients.length) {
     var ratio = currentServings / baseServings;
     html += '<div class="mb-8">';

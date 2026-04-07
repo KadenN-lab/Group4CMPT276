@@ -11,6 +11,8 @@ import com._6.group4.smartcart.grocery.PantryItem;
 import com._6.group4.smartcart.grocery.PantryItemUpdateRequest;
 import com._6.group4.smartcart.grocery.PantryItemRepository;
 import com._6.group4.smartcart.grocery.IngredientSwapService;
+import com._6.group4.smartcart.grocery.PriceDatabase;
+import com._6.group4.smartcart.grocery.StoreQuantityConverter;
 import com._6.group4.smartcart.mealplanning.dto.GeminiMealPlanDto;
 import com._6.group4.smartcart.mealplanning.dto.GeminiRecipeDto;
 import com._6.group4.smartcart.mealplanning.dto.MealPlanGenerationRequest;
@@ -382,6 +384,16 @@ public class MealPlanApiController {
                             .collect(java.util.stream.Collectors.toList());
                     NutritionDatabase.RecipeNutrition nutrition = NutritionDatabase.estimateRecipe(inputs);
                     response.put("nutrition", nutrition.toMap());
+
+                    // Estimate recipe cost using PriceDatabase
+                    double totalCost = 0;
+                    for (RecipeIngredient ing : r.getIngredients()) {
+                        String name = ing.getCanonicalName() != null ? ing.getCanonicalName() : ing.getIngredientName();
+                        String storeQty = StoreQuantityConverter.convert(name, ing.getQuantity(), ing.getUnit());
+                        totalCost += PriceDatabase.estimateItemCost(name, storeQty);
+                    }
+                    response.put("estimatedCost", Math.round(totalCost * 100.0) / 100.0);
+
                     return ResponseEntity.ok(response);
                 })
                 .orElse(ResponseEntity.notFound().build());
