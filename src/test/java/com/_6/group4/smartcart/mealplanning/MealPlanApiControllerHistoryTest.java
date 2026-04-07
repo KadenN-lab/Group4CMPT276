@@ -5,6 +5,7 @@ import com._6.group4.smartcart.auth.UserPreferencesRepository;
 import com._6.group4.smartcart.auth.UserRepository;
 import com._6.group4.smartcart.grocery.GroceryAggregationService;
 import com._6.group4.smartcart.grocery.PantryItemRepository;
+import com._6.group4.smartcart.mealplanning.FavouriteRecipeRepository;
 import jakarta.servlet.http.HttpSession;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
