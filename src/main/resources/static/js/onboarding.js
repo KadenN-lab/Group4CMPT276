@@ -415,7 +415,8 @@ var Onboarding = (function () {
 
     var scheduleCount = 0;
     DAYS.forEach(function (d) { MEALS.forEach(function (m) { if (data.schedule[d][m]) scheduleCount++; }); });
-    html += reviewSection("Meal Schedule", scheduleCount + " of 21 meals", 7);
+    var totalPossibleMeals = DAYS.length * MEALS.length;
+    html += reviewSection("Meal Schedule", scheduleCount + " of " + totalPossibleMeals + " meals", 7);
 
     var pantryItems = Object.keys(data.pantry).filter(function (k) { return data.pantry[k]; });
     var pantryText = pantryItems.length ? pantryItems.length + " items" : "None";
