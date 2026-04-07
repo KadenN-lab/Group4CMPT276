@@ -1260,6 +1260,12 @@ ul, ol { list-style: none; }
 .nutrition-item { display: flex; flex-direction: column; align-items: center; min-width: 3.5rem; }
 .nutrition-value { font-weight: 700; font-size: 0.9375rem; color: var(--foreground); }
 .nutrition-label { font-size: 0.6875rem; color: var(--muted-foreground); text-transform: uppercase; letter-spacing: 0.04em; }
+.recipe-cost {
+  display: flex; align-items: center; padding: 0.5rem 1rem; margin: 0.5rem 0;
+  background: var(--celery-light); border-radius: var(--radius);
+  border: 1px solid rgba(46, 125, 50, 0.15);
+  font-weight: 600; font-size: 0.9375rem; color: var(--foreground);
+}
 
 /* ================================================================
    Serving Adjuster
