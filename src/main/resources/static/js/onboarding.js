@@ -320,7 +320,7 @@ var Onboarding = (function () {
   /* Step 9: Weekly Proteins */
   function stepProteins() {
     var html = '<h1 class="onboarding-title">What proteins do you want this week?</h1>';
-    html += '<p class="onboarding-subtitle">Pick 2-3 proteins to buy. We\'ll plan portions across your meals so nothing goes to waste.</p>';
+    html += '<p class="onboarding-subtitle">Pick the proteins you enjoy. Select 2-3 for a focused week, or pick more and we\'ll rotate different combinations each time you generate a plan.</p>';
 
     PROTEIN_OPTIONS.forEach(function (cat) {
       html += '<div class="staple-category">';
@@ -340,7 +340,7 @@ var Onboarding = (function () {
     });
 
     var count = Object.keys(data.proteins).filter(function (k) { return data.proteins[k]; }).length;
-    html += '<p class="hint" style="text-align:center;margin-top:0.5rem;">' + count + ' selected — we recommend 2-3 proteins per week</p>';
+    html += '<p class="hint" style="text-align:center;margin-top:0.5rem;">' + count + ' selected' + (count > 3 ? ' — we\'ll pick 3 at random each week for variety' : '') + '</p>';
     html += nav("Back", "Next");
     return html;
   }
@@ -348,7 +348,7 @@ var Onboarding = (function () {
   /* Step 10: Weekly Vegetables & Fruits */
   function stepVeggiesFruits() {
     var html = '<h1 class="onboarding-title">Which vegetables and fruits to buy?</h1>';
-    html += '<p class="onboarding-subtitle">Pick 4-6 vegetables and 2-3 fruits. We\'ll plan recipes so each item is used across 3-4 meals.</p>';
+    html += '<p class="onboarding-subtitle">Pick the vegetables and fruits you like. Select a few for a focused week, or pick more and we\'ll rotate different combinations each time.</p>';
 
     html += '<h2 style="font-size:1rem;margin:1rem 0 0.5rem;color:var(--foreground);">Vegetables</h2>';
     html += '<div id="ob-veggies">';
